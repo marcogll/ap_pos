@@ -40,9 +40,10 @@ let isDashboardLoading = false;
 // --- LÓGICA DE NEGOCIO ---
 
 async function loadDashboardData() {
-  // Guardia para prevenir ejecuciones múltiples
-  if (currentUser.role !== 'admin' || !incomeChart || isDashboardLoading) return;
-  
+  // Guardia para prevenir ejecuciones múltiples y re-entradas.
+  if (currentUser.role !== 'admin' || !incomeChart || isDashboardLoading) {
+    return;
+  }
   isDashboardLoading = true;
 
   try {
@@ -50,11 +51,18 @@ async function loadDashboardData() {
     if (!response.ok) {
       if (response.status === 403) {
         console.warn('Acceso al dashboard denegado.');
-        return;
+      } else {
+        throw new Error('Falló la carga de datos del dashboard');
       }
-      throw new Error('Falló la carga de datos del dashboard');
+      return; // Salir aquí después de manejar el error
     }
     const data = await response.json();
+
+    // Antes de actualizar, verificar que el dashboard sigue activo.
+    const dashboardTab = document.getElementById('tab-dashboard');
+    if (!dashboardTab.classList.contains('active')) {
+      return;
+    }
 
     // Actualizar tarjetas de estadísticas
     document.getElementById('stat-total-income').textContent = `${Number(data.totalIncome || 0).toFixed(2)}`;
@@ -63,11 +71,14 @@ async function loadDashboardData() {
     // Actualizar datos del gráfico
     incomeChart.data.labels = data.incomeByService.map(item => item.tipo);
     incomeChart.data.datasets[0].data = data.incomeByService.map(item => item.total);
-    incomeChart.update();
+
+    // Usar 'none' para el modo de actualización previene bucles de renderizado por animación/responsividad.
+    incomeChart.update('none');
     
   } catch (error) {
     console.error('Error al cargar el dashboard:', error);
   } finally {
+    // Asegurar que el bloqueo se libere sin importar el resultado.
     isDashboardLoading = false;
   }
 }
