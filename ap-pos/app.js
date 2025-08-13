@@ -29,6 +29,7 @@ const btnTestTicket = document.getElementById('btnTestTicket');
 const formClient = document.getElementById('formClient');
 const tblClientsBody = document.getElementById('tblClients')?.querySelector('tbody');
 const clientDatalist = document.getElementById('client-list');
+const formCredentials = document.getElementById('formCredentials');
 
 // --- LÓGICA DE NEGOCIO ---
 
@@ -61,18 +62,17 @@ async function loadDashboardData() {
     };
 
     if (incomeChart) {
-      incomeChart.data = chartData;
-      incomeChart.update();
-    } else {
-      incomeChart = new Chart(ctx, {
-        type: 'pie',
-        data: chartData,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-        }
-      });
+      incomeChart.destroy();
     }
+    
+    incomeChart = new Chart(ctx, {
+      type: 'pie',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+      }
+    });
   } catch (error) {
     console.error('Error loading dashboard:', error);
   }
@@ -254,6 +254,35 @@ async function handleSaveSettings(e) {
   alert('Configuración guardada.');
 }
 
+async function handleSaveCredentials(e) {
+    e.preventDefault();
+    const username = document.getElementById('s-username').value;
+    const password = document.getElementById('s-password').value;
+
+    const body = { username };
+    if (password) {
+        body.password = password;
+    }
+
+    try {
+        const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+            alert('Credenciales actualizadas.');
+            document.getElementById('s-password').value = '';
+        } else {
+            const error = await response.json();
+            alert(`Error: ${error.error}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al guardar credenciales.');
+    }
+}
+
 async function handleNewMovement(e) {
   e.preventDefault();
   const form = e.target;
@@ -393,6 +422,7 @@ async function initializeApp() {
   const btnLogout = document.getElementById('btnLogout');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
+  formCredentials?.addEventListener('submit', handleSaveCredentials);
   formMove?.addEventListener('submit', handleNewMovement);
   tblMovesBody?.addEventListener('click', handleTableClick);
   tblClientsBody?.addEventListener('click', handleTableClick);
@@ -414,13 +444,17 @@ async function initializeApp() {
   Promise.all([
     load(KEY_SETTINGS, DEFAULT_SETTINGS),
     load(KEY_DATA, []),
-    load(KEY_CLIENTS, [])
+    load(KEY_CLIENTS, []),
+    fetch('/api/user').then(res => res.json())
   ]).then(values => {
-    [settings, movements, clients] = values;
+    [settings, movements, clients, user] = values;
     renderSettings();
     renderTable();
     renderClientsTable();
     updateClientDatalist();
+    if (user) {
+        document.getElementById('s-username').value = user.username;
+    }
     // Cargar datos del dashboard al inicio
     loadDashboardData();
   }).catch(error => {

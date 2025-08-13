@@ -233,6 +233,47 @@ apiRouter.delete('/movements/:id', (req, res) => {
 // Registrar el router de la API protegida
 app.use('/api', apiRouter);
 
+// --- User Management ---
+apiRouter.get('/user', (req, res) => {
+    db.get("SELECT id, username FROM users WHERE id = ?", [req.session.userId], (err, row) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(row);
+    });
+});
+
+apiRouter.post('/user', (req, res) => {
+    const { username, password } = req.body;
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    if (password) {
+        // Si se proporciona una nueva contraseña, hashearla y actualizar todo
+        bcrypt.hash(password, SALT_ROUNDS, (err, hash) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error hashing password' });
+            }
+            db.run('UPDATE users SET username = ?, password = ? WHERE id = ?', [username, hash, req.session.userId], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ message: 'User credentials updated successfully' });
+            });
+        });
+    } else {
+        // Si no se proporciona contraseña, solo actualizar el nombre de usuario
+        db.run('UPDATE users SET username = ? WHERE id = ?', [username, req.session.userId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ message: 'Username updated successfully' });
+        });
+    }
+});
+
 // --- Dashboard Route ---
 apiRouter.get('/dashboard', (req, res) => {
     const queries = {
