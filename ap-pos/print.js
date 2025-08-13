@@ -66,21 +66,60 @@ function templateTicket(mov, settings) {
 
   if (settings.leyenda) lines.push(`<div class="t-footer t-center t-small">${esc(settings.leyenda)}</div>`);
   
+  // Sección de Encuesta con QR
+  lines.push('<div class="t-qr-section">');
+  lines.push('<div class="t-small t-bold">¡Tu opinión es muy importante!</div>');
+  lines.push('<div class="t-small">Escanea el código QR para darnos tu feedback.</div>');
+  lines.push('<canvas id="qr-canvas"></canvas>');
+  lines.push('</div>');
+
   lines.push('</div>');
   return lines.join('');
 }
 
 /**
- * Renderiza el ticket en el DOM y llama a la función de impresión del navegador.
+ * Renderiza el ticket en el DOM, genera el QR y llama a la función de impresión.
  * @param {object} mov El objeto del movimiento.
  * @param {object} settings El objeto de configuración.
  */
 export function renderTicketAndPrint(mov, settings) {
   const printArea = document.getElementById('printArea');
-  if (printArea) {
-    printArea.innerHTML = templateTicket(mov, settings);
-    window.print();
-  } else {
+  if (!printArea) {
     console.error("El área de impresión #printArea no se encontró.");
+    alert("Error: No se encontró el área de impresión. Contacte al soporte.");
+    return;
+  }
+
+  try {
+    // 1. Renderizar la estructura HTML del ticket
+    printArea.innerHTML = templateTicket(mov, settings);
+
+    // 2. Encontrar el elemento canvas para el QR
+    const canvas = document.getElementById('qr-canvas');
+    if (!canvas) {
+      console.error("El canvas del QR #qr-canvas no se encontró. Se imprimirá sin QR.");
+      setTimeout(() => window.print(), 100); // Imprimir sin QR
+      return;
+    }
+
+    // 3. Generar el código QR
+    const qrUrl = 'http://vanityexperience.mx/qr';
+    QRCode.toCanvas(canvas, qrUrl, { width: 140, margin: 1 }, function (error) {
+      if (error) {
+        console.error('Error al generar el código QR:', error);
+        // Ocultar el canvas si hay error y proceder a imprimir
+        canvas.style.display = 'none';
+      }
+      
+      // 4. Llamar a la impresión después de un breve timeout
+      // Esto asegura que el navegador haya tenido tiempo de renderizar el QR
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    });
+
+  } catch (error) {
+    console.error("Error al intentar imprimir:", error);
+    alert(`Ocurrió un error al preparar la impresión: ${error.message}. Revise la consola para más detalles.`);
   }
 }

@@ -1,27 +1,25 @@
-# Usar una imagen base de Node.js
+# 1. Imagen Base: Usamos una imagen oficial de Node.js, versión 18-alpine.
+# 'alpine' es una versión muy ligera, ideal para producción.
 FROM node:18-alpine
 
-# Establecer el directorio de trabajo en el contenedor
-WORKDIR /usr/src/app
+# 2. Directorio de Trabajo: Establecemos el directorio de trabajo dentro del contenedor.
+WORKDIR /app
 
-# Copiar package.json y package-lock.json
+# 3. Copiar Archivos de Dependencias: Copiamos package.json y package-lock.json.
+# Hacemos esto en un paso separado para aprovechar el caché de Docker.
+# Si no cambian estos archivos, Docker no reinstalará las dependencias.
 COPY package*.json ./
 
-# Instalar las dependencias de la aplicación
+# 4. Instalar Dependencias: Instalamos las dependencias del proyecto.
 RUN npm install
 
-# Copiar el resto de los archivos de la aplicación
+# 5. Copiar el Resto de la Aplicación: Copiamos todos los demás archivos.
+# Los archivos en .dockerignore serán excluidos automáticamente.
 COPY . .
 
-# Crear un directorio para la base de datos persistente y definirlo como volumen
-RUN mkdir -p /usr/src/app/data
-VOLUME /usr/src/app/data
-
-# Establecer la ruta de la base de datos a través de una variable de entorno
-ENV DB_PATH /usr/src/app/data/ap-pos.db
-
-# Exponer el puerto en el que corre la aplicación
+# 6. Exponer Puerto: Informamos a Docker que el contenedor escucha en el puerto 3000.
 EXPOSE 3000
 
-# Comando para iniciar la aplicación
-CMD [ "node", "server.js" ]
+# 7. Comando de Inicio: El comando que se ejecutará cuando el contenedor inicie.
+# Usamos 'npm start' que definiste en tu package.json.
+CMD [ "npm", "start" ]

@@ -226,6 +226,17 @@ button.action-btn {
 .t-row { display: flex; justify-content: space-between; }
 .t-footer { margin-top: 10px; }
 
+.t-qr-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #000;
+  text-align: center;
+}
+#qr-canvas {
+  margin: 5px auto;
+  display: block;
+}
+
 
 /***** MODO IMPRESIÓN *****/
 @media print {
@@ -235,7 +246,7 @@ button.action-btn {
     margin: 0;
   }
   
-  .no-print, .container {
+  .no-print, .container, .main-footer-credits {
     display: none !important;
   }
 
@@ -245,7 +256,7 @@ button.action-btn {
   
   @page {
     size: 58mm auto;
-    margin: 0;
+    margin: 1cm 0;
   }
   
   .ticket {
