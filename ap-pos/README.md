@@ -69,3 +69,56 @@ Este es un sistema de punto de venta (POS) simple y moderno basado en la web, di
 ## Autores
 - **Gemini**
 - **Marco G.**
+
+---
+
+## Diagnóstico de Impresión (CUPS en Linux)
+
+Si tienes problemas para imprimir recibos en un entorno Linux, sigue estos pasos en la terminal de la computadora donde la impresora está conectada para diagnosticar el problema.
+
+### Paso 1: Verificar el Estado de la Impresora
+
+Este comando lista todas las impresoras configuradas en el sistema y muestra su estado. Reemplaza `TICKETS` con el nombre real de tu impresora.
+
+```bash
+lpstat -p -d
+```
+
+**Qué buscar:**
+- Deberías ver una línea como `printer TICKETS is idle...`.
+- Si tu impresora no aparece en la lista, no está instalada o CUPS no la detecta.
+- Anota el nombre exacto de la impresora, ya que lo necesitarás para los siguientes pasos y para la configuración de la aplicación.
+
+### Paso 2: Enviar una Página de Prueba Directa
+
+Esto permite verificar si el sistema de impresión (CUPS) puede comunicarse con la impresora, ignorando cualquier problema de la aplicación.
+
+1.  **Crea un archivo de texto de prueba:**
+    ```bash
+    echo "Prueba de impresión para la impresora TICKETS" > /tmp/prueba.txt
+    ```
+
+2.  **Envía el archivo a imprimir:** (Recuerda usar el nombre exacto de tu impresora)
+    ```bash
+    lp -d TICKETS /tmp/prueba.txt
+    ```
+
+**¿Se imprimió la página?**
+- **Sí:** El sistema de impresión funciona correctamente. El problema probablemente está en la configuración de la aplicación. Asegúrate de que esté usando el nombre correcto de la impresora.
+- **No:** El problema está en la comunicación entre CUPS y la impresora. Continúa al siguiente paso.
+
+### Paso 3: Revisar la Cola y los Registros de Errores
+
+Si la página de prueba no se imprimió, estos comandos pueden darte más pistas.
+
+1.  **Revisar la cola de impresión:**
+    ```bash
+    lpq -a
+    ```
+    *Esto te mostrará si el trabajo está atascado en la cola.*
+
+2.  **Consultar el registro de errores de CUPS:**
+    ```bash
+    tail -n 20 /var/log/cups/error_log
+    ```
+    *Busca mensajes de error recientes que mencionen el nombre de tu impresora, "filter failed", "driver" o problemas de conexión.*
