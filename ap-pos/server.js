@@ -23,7 +23,8 @@ app.use(session({
 }));
 
 // --- DATABASE INITIALIZATION ---
-const dbPath = process.env.DB_PATH || './ap-pos.db';
+// Usar un path absoluto para asegurar que la DB siempre se cree en la carpeta del proyecto.
+const dbPath = path.join(__dirname, 'ap-pos.db');
 console.log(`Connecting to database at: ${dbPath}`);
 
 const db = new sqlite3.Database(dbPath, (err) => {

@@ -162,16 +162,8 @@ async function saveClient(clientData) {
 
   await save('clients', { client: clientToSave });
 
-  if (isUpdate) {
-    const index = clients.findIndex(c => c.id === clientToSave.id);
-    if (index > -1) {
-      clients[index] = clientToSave;
-    }
-  } else {
-    if (!clients.some(c => c.id === clientToSave.id)) {
-        clients.push(clientToSave);
-    }
-  }
+  // Volver a cargar los clientes desde el servidor para asegurar consistencia
+  clients = await load(KEY_CLIENTS, []);
   
   renderClientsTable();
   updateClientDatalist();
@@ -233,12 +225,13 @@ function renderTable() {
     const client = clients.find(c => c.id === mov.clienteId);
     const tr = document.createElement('tr');
     const fechaCita = mov.fechaCita ? new Date(mov.fechaCita + 'T00:00:00').toLocaleDateString('es-MX') : '';
+    const tipoServicio = mov.subtipo ? `${mov.tipo} (${mov.subtipo})` : mov.tipo;
     tr.innerHTML = `
       <td><a href="#" class="action-btn" data-id="${mov.id}" data-action="reprint">${mov.folio}</a></td>
       <td>${new Date(mov.fechaISO).toLocaleDateString('es-MX')}</td>
       <td>${fechaCita} ${mov.horaCita || ''}</td>
       <td>${client ? client.nombre : 'Cliente Eliminado'}</td>
-      <td>${mov.tipo}</td>
+      <td>${tipoServicio}</td>
       <td>${Number(mov.monto).toFixed(2)}</td>
       <td><button class="action-btn" data-id="${mov.id}" data-action="delete">Eliminar</button></td>
     `;

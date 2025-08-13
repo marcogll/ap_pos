@@ -23,6 +23,7 @@ function templateTicket(mov, settings) {
   const dt = new Date(mov.fechaISO || Date.now());
   const fechaLocal = dt.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
   const montoFormateado = Number(mov.monto).toFixed(2);
+  const tipoServicio = mov.subtipo === 'Retoque' ? `Retoque de ${mov.tipo}` : mov.tipo;
 
   const lines = [];
   lines.push('<div class="ticket">');
@@ -39,7 +40,7 @@ function templateTicket(mov, settings) {
   lines.push(`<div class="t-row t-small"><span>Fecha:</span><span>${esc(fechaLocal)}</span></div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div><span class="t-bold">${esc(mov.tipo)}</span></div>`);
+  lines.push(`<div><span class="t-bold">${esc(tipoServicio)}</span></div>`);
   if (mov.client) lines.push(`<div class="t-small">Cliente: ${esc(mov.client.nombre)}</div>`);
   if (mov.concepto) lines.push(`<div class="t-small">Concepto: ${esc(mov.concepto)}</div>`);
   if (mov.staff)  lines.push(`<div class="t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
