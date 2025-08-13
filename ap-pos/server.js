@@ -23,11 +23,14 @@ app.use(session({
 }));
 
 // --- DATABASE INITIALIZATION ---
-const db = new sqlite3.Database('./ap-pos.db', (err) => {
+const dbPath = process.env.DB_PATH || './ap-pos.db';
+console.log(`Connecting to database at: ${dbPath}`);
+
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error(err.message);
     }
-    console.log('Connected to the ap-pos.db database.');
+    console.log('Connected to the database.');
 });
 
 // --- AUTHENTICATION LOGIC ---
@@ -96,7 +99,7 @@ db.serialize(() => {
         cedulaMedico TEXT,
         pruebaAprobacion INTEGER
     )`);
-    db.run(`CREATE TABLE IF NOT EXISTS movements (id TEXT PRIMARY KEY, folio TEXT, fechaISO TEXT, clienteId TEXT, tipo TEXT, monto REAL, metodo TEXT, concepto TEXT, staff TEXT, notas TEXT, fechaCita TEXT, horaCita TEXT, FOREIGN KEY (clienteId) REFERENCES clients (id))`);
+    db.run(`CREATE TABLE IF NOT EXISTS movements (id TEXT PRIMARY KEY, folio TEXT, fechaISO TEXT, clienteId TEXT, tipo TEXT, subtipo TEXT, monto REAL, metodo TEXT, concepto TEXT, staff TEXT, notas TEXT, fechaCita TEXT, horaCita TEXT, FOREIGN KEY (clienteId) REFERENCES clients (id))`);
 });
 
 // Middleware para verificar si el usuario está autenticado
@@ -269,10 +272,10 @@ apiRouter.get('/movements', (req, res) => {
 
 apiRouter.post('/movements', (req, res) => {
     const { movement } = req.body;
-    const { id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita } = movement;
-    db.run(`INSERT INTO movements (id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita], function(err) {
+    const { id, folio, fechaISO, clienteId, tipo, subtipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita } = movement;
+    db.run(`INSERT INTO movements (id, folio, fechaISO, clienteId, tipo, subtipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, folio, fechaISO, clienteId, tipo, subtipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -289,6 +292,18 @@ apiRouter.delete('/movements/:id', (req, res) => {
             return;
         }
         res.json({ message: 'Movement deleted' });
+    });
+});
+
+// --- Client History ---
+apiRouter.get('/clients/:id/history', (req, res) => {
+    const { id } = req.params;
+    db.all("SELECT * FROM movements WHERE clienteId = ? ORDER BY fechaISO DESC", [id], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
     });
 });
 
@@ -419,15 +434,23 @@ apiRouter.get('/dashboard', isAdmin, (req, res) => {
     const queries = {
         totalIncome: "SELECT SUM(monto) as total FROM movements",
         totalMovements: "SELECT COUNT(*) as total FROM movements",
-        incomeByService: "SELECT tipo, SUM(monto) as total FROM movements GROUP BY tipo"
+        incomeByService: "SELECT tipo, SUM(monto) as total FROM movements GROUP BY tipo",
+        incomeByPaymentMethod: "SELECT metodo, SUM(monto) as total FROM movements WHERE metodo IS NOT NULL AND metodo != '' GROUP BY metodo",
+        upcomingAppointments: `
+            SELECT m.id, m.folio, m.fechaCita, m.horaCita, c.nombre as clienteNombre 
+            FROM movements m 
+            JOIN clients c ON m.clienteId = c.id 
+            WHERE m.fechaCita IS NOT NULL AND m.fechaCita >= date('now')
+            ORDER BY m.fechaCita ASC, m.horaCita ASC 
+            LIMIT 5`
     };
 
     const results = {};
     const promises = Object.keys(queries).map(key => {
         return new Promise((resolve, reject) => {
             const query = queries[key];
-            // Usar db.all para incomeByService y db.get para los demás para simplificar
-            const method = query.includes('GROUP BY') ? 'all' : 'get';
+            // Usar db.all para consultas que devuelven múltiples filas
+            const method = ['incomeByService', 'incomeByPaymentMethod', 'upcomingAppointments'].includes(key) ? 'all' : 'get';
             
             db[method](query, [], (err, result) => {
                 if (err) {

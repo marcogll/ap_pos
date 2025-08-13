@@ -20,6 +20,7 @@ let movements = [];
 let clients = [];
 let users = [];
 let incomeChart = null;
+let paymentMethodChart = null;
 let currentUser = {};
 
 // --- DOM ELEMENTS ---
@@ -34,6 +35,7 @@ const clientDatalist = document.getElementById('client-list');
 const formCredentials = document.getElementById('formCredentials');
 const formAddUser = document.getElementById('formAddUser');
 const tblUsersBody = document.getElementById('tblUsers')?.querySelector('tbody');
+const appointmentsList = document.getElementById('upcoming-appointments-list');
 
 let isDashboardLoading = false;
 
@@ -41,7 +43,7 @@ let isDashboardLoading = false;
 
 async function loadDashboardData() {
   // Guardia para prevenir ejecuciones múltiples y re-entradas.
-  if (currentUser.role !== 'admin' || !incomeChart || isDashboardLoading) {
+  if (currentUser.role !== 'admin' || isDashboardLoading) {
     return;
   }
   isDashboardLoading = true;
@@ -68,12 +70,38 @@ async function loadDashboardData() {
     document.getElementById('stat-total-income').textContent = `${Number(data.totalIncome || 0).toFixed(2)}`;
     document.getElementById('stat-total-movements').textContent = data.totalMovements || 0;
 
-    // Actualizar datos del gráfico
-    incomeChart.data.labels = data.incomeByService.map(item => item.tipo);
-    incomeChart.data.datasets[0].data = data.incomeByService.map(item => item.total);
+    // Actualizar datos del gráfico de ingresos
+    if (incomeChart) {
+      incomeChart.data.labels = data.incomeByService.map(item => item.tipo);
+      incomeChart.data.datasets[0].data = data.incomeByService.map(item => item.total);
+      incomeChart.update('none');
+    }
+    
+    // Actualizar datos del gráfico de método de pago
+    if (paymentMethodChart) {
+      paymentMethodChart.data.labels = data.incomeByPaymentMethod.map(item => item.metodo);
+      paymentMethodChart.data.datasets[0].data = data.incomeByPaymentMethod.map(item => item.total);
+      paymentMethodChart.update('none');
+    }
 
-    // Usar 'none' para el modo de actualización previene bucles de renderizado por animación/responsividad.
-    incomeChart.update('none');
+    // Renderizar próximas citas
+    if (appointmentsList) {
+      appointmentsList.innerHTML = '';
+      if (data.upcomingAppointments.length > 0) {
+        data.upcomingAppointments.forEach(appt => {
+          const item = document.createElement('div');
+          item.className = 'appointment-item';
+          const fechaCita = new Date(appt.fechaCita + 'T00:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' });
+          item.innerHTML = `
+            <a href="#" data-id="${appt.id}" data-action="reprint">${appt.clienteNombre}</a>
+            <span class="date">${fechaCita} - ${appt.horaCita}</span>
+          `;
+          appointmentsList.appendChild(item);
+        });
+      } else {
+        appointmentsList.innerHTML = '<p>No hay citas próximas.</p>';
+      }
+    }
     
   } catch (error) {
     console.error('Error al cargar el dashboard:', error);
@@ -218,16 +246,17 @@ function renderTable() {
   });
 }
 
-function renderClientsTable() {
+function renderClientsTable(clientList = clients) {
   if (!tblClientsBody) return;
   tblClientsBody.innerHTML = '';
-  clients.forEach(c => {
+  clientList.forEach(c => {
     const tr = document.createElement('tr');
+    tr.dataset.id = c.id; // Importante para la función de expandir
+    tr.style.cursor = 'pointer'; // Indicar que la fila es clickeable
     tr.innerHTML = `
       <td>${c.nombre}</td>
       <td>${c.telefono || ''}</td>
-      <td>${c.cumpleaños ? new Date(c.cumpleaños).toLocaleDateString('es-MX') : ''}</td>
-      <td>${c.consentimiento ? 'Sí' : 'No'}</td>
+      <td>${c.esOncologico ? 'Sí' : 'No'}</td>
       <td>
         <button class="action-btn" data-id="${c.id}" data-action="edit-client">Editar</button>
         <button class="action-btn" data-id="${c.id}" data-action="delete-client">Eliminar</button>
@@ -409,12 +438,20 @@ async function handleNewMovement(e) {
     }
   }
 
+  const tipoServicio = document.getElementById('m-tipo').value;
+  const subtipoContainer = document.getElementById('m-subtipo-container');
+  let subtipo = '';
+  if (!subtipoContainer.classList.contains('hidden')) {
+    subtipo = document.getElementById('m-subtipo').value;
+  }
+
   const newMovement = {
     id: crypto.randomUUID(),
     folio: generateFolio(),
     fechaISO: new Date().toISOString(),
     clienteId: client.id,
-    tipo: document.getElementById('m-tipo').value,
+    tipo: tipoServicio,
+    subtipo: subtipo,
     monto: Number(monto.toFixed(2)),
     metodo: document.getElementById('m-metodo').value,
     concepto: document.getElementById('m-concepto').value,
@@ -425,25 +462,68 @@ async function handleNewMovement(e) {
   };
 
   await addMovement(newMovement);
-  const movementForTicket = { ...newMovement, cliente: client.nombre };
-  renderTicketAndPrint(movementForTicket, settings);
+  renderTicketAndPrint({ ...newMovement, client }, settings);
   form.reset();
   document.getElementById('m-cliente').focus();
+  subtipoContainer.classList.add('hidden');
+}
+
+async function toggleClientHistory(row, client) {
+  const historyRowId = `history-for-${client.id}`;
+  const existingHistoryRow = document.getElementById(historyRowId);
+
+  if (existingHistoryRow) {
+    existingHistoryRow.remove();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/clients/${client.id}/history`);
+    const history = await response.json();
+    
+    const historyRow = document.createElement('tr');
+    historyRow.id = historyRowId;
+    historyRow.className = 'client-history-row';
+    
+    let historyHtml = '<h4>Historial de Servicios</h4>';
+    if (history.length > 0) {
+      historyHtml += '<table><thead><tr><th>Fecha</th><th>Servicio</th><th>Monto</th></tr></thead><tbody>';
+      history.forEach(mov => {
+        const fecha = new Date(mov.fechaISO).toLocaleDateString('es-MX');
+        const servicio = mov.subtipo ? `${mov.tipo} (${mov.subtipo})` : mov.tipo;
+        historyHtml += `<tr><td>${fecha}</td><td>${servicio}</td><td>${Number(mov.monto).toFixed(2)}</td></tr>`;
+      });
+      historyHtml += '</tbody></table>';
+    } else {
+      historyHtml += '<p>No hay historial de servicios para este cliente.</p>';
+    }
+
+    historyRow.innerHTML = `<td colspan="4"><div class="client-history-content">${historyHtml}</div></td>`;
+    row.after(historyRow);
+
+  } catch (error) {
+    console.error('Error al cargar el historial del cliente:', error);
+    alert('No se pudo cargar el historial.');
+  }
 }
 
 function handleTableClick(e) {
-  if (e.target.classList.contains('action-btn')) {
+  const target = e.target;
+  const row = target.closest('tr');
+  if (!row) return;
+
+  const actionBtn = target.closest('.action-btn');
+  if (actionBtn) {
     e.preventDefault();
-    const id = e.target.dataset.id;
-    const action = e.target.dataset.action;
+    const id = actionBtn.dataset.id;
+    const action = actionBtn.dataset.action;
     
     if (action === 'reprint' || action === 'delete') {
       const movement = movements.find(m => m.id === id);
       if (movement) {
         if (action === 'reprint') {
           const client = clients.find(c => c.id === movement.clienteId);
-          const movementForTicket = { ...movement, cliente: client ? client.nombre : 'N/A' };
-          renderTicketAndPrint(movementForTicket, settings);
+          renderTicketAndPrint({ ...movement, client }, settings);
         } else if (action === 'delete') {
           deleteMovement(id);
         }
@@ -459,15 +539,11 @@ function handleTableClick(e) {
           document.getElementById('c-cumple').value = client.cumpleaños;
           document.getElementById('c-consent').checked = client.consentimiento;
           
-          // Campos oncológicos
           const esOncologicoCheckbox = document.getElementById('c-esOncologico');
           const oncologicoFields = document.getElementById('oncologico-fields');
           esOncologicoCheckbox.checked = client.esOncologico;
-          if (client.esOncologico) {
-            oncologicoFields.classList.remove('hidden');
-          } else {
-            oncologicoFields.classList.add('hidden');
-          }
+          oncologicoFields.classList.toggle('hidden', !client.esOncologico);
+          
           document.getElementById('c-oncologoAprueba').checked = client.oncologoAprueba;
           document.getElementById('c-nombreMedico').value = client.nombreMedico || '';
           document.getElementById('c-telefonoMedico').value = client.telefonoMedico || '';
@@ -485,11 +561,18 @@ function handleTableClick(e) {
             document.getElementById('u-name').value = user.name;
             document.getElementById('u-username').value = user.username;
             document.getElementById('u-role').value = user.role;
-            document.getElementById('u-password').value = ''; // Limpiar campo de contraseña
+            document.getElementById('u-password').value = '';
             document.getElementById('u-password').placeholder = 'Dejar en blanco para no cambiar';
         }
     } else if (action === 'delete-user') {
         deleteUser(parseInt(id, 10));
+    }
+  } else if (row.parentElement.id === 'tblClientsBody') {
+    // Si se hace clic en cualquier parte de la fila del cliente (que no sea un botón)
+    const clientId = row.dataset.id;
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      toggleClientHistory(row, client);
     }
   }
 }
@@ -539,6 +622,25 @@ function activateTab(tabId) {
         }
       });
     }
+    if (!paymentMethodChart) {
+      const ctx = document.getElementById('paymentMethodChart').getContext('2d');
+      paymentMethodChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Ingresos por Método de Pago',
+            data: [],
+            backgroundColor: ['#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56'],
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false
+        }
+      });
+    }
     // Cargar (o recargar) los datos del dashboard
     loadDashboardData();
   }
@@ -557,7 +659,13 @@ function handleTestTicket() {
         id: 'demo',
         folio: 'DEMO-000001',
         fechaISO: new Date().toISOString(),
-        cliente: 'Cliente de Prueba',
+        client: {
+          nombre: 'Cliente de Prueba',
+          esOncologico: true,
+          nombreMedico: 'Dr. Juan Pérez',
+          telefonoMedico: '5512345678',
+          cedulaMedico: '1234567'
+        },
         tipo: 'Pago',
         monto: 123.45,
         metodo: 'Efectivo',
@@ -634,12 +742,15 @@ async function initializeApp() {
   const tabs = document.querySelector('.tabs');
   const btnLogout = document.getElementById('btnLogout');
   const btnCancelEditUser = document.getElementById('btnCancelEditUser');
+  const searchClientInput = document.getElementById('search-client');
+  const tipoServicioSelect = document.getElementById('m-tipo');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
   formCredentials?.addEventListener('submit', handleSaveCredentials);
   formMove?.addEventListener('submit', handleNewMovement);
   tblMovesBody?.addEventListener('click', handleTableClick);
   tblClientsBody?.addEventListener('click', handleTableClick);
+  appointmentsList?.addEventListener('click', handleTableClick);
   btnExport?.addEventListener('click', exportCSV);
   btnTestTicket?.addEventListener('click', handleTestTicket);
   formClient?.addEventListener('submit', handleClientForm);
@@ -663,11 +774,7 @@ async function initializeApp() {
 
   document.getElementById('c-esOncologico')?.addEventListener('change', (e) => {
     const oncologicoFields = document.getElementById('oncologico-fields');
-    if (e.target.checked) {
-      oncologicoFields.classList.remove('hidden');
-    } else {
-      oncologicoFields.classList.add('hidden');
-    }
+    oncologicoFields.classList.toggle('hidden', !e.target.checked);
   });
 
   btnCancelEditUser?.addEventListener('click', (e) => {
@@ -675,6 +782,18 @@ async function initializeApp() {
     formAddUser.reset();
     document.getElementById('u-id').value = '';
     document.getElementById('u-password').placeholder = 'Contraseña';
+  });
+
+  searchClientInput?.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredClients = clients.filter(c => c.nombre.toLowerCase().includes(searchTerm));
+    renderClientsTable(filteredClients);
+  });
+
+  tipoServicioSelect?.addEventListener('change', (e) => {
+    const subtipoContainer = document.getElementById('m-subtipo-container');
+    const servicesWithSubtype = ['Microblading', 'Lashes', 'Nail Art'];
+    subtipoContainer.classList.toggle('hidden', !servicesWithSubtype.includes(e.target.value));
   });
 
   // 4. Cargar el resto de los datos de la aplicación.
@@ -713,3 +832,4 @@ async function initializeApp() {
 
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+

@@ -60,11 +60,11 @@ Este es un sistema de punto de venta (POS) simple y moderno basado en la web, di
     ```
 
 2.  **Ejecutar el Contenedor:**
-    Para ejecutar la aplicación en un contenedor, usa el siguiente comando. Esto mapeará el puerto 3000 y montará un volumen para que la base de datos persista fuera del contenedor.
+    Para ejecutar la aplicación en un contenedor, usa el siguiente comando. Esto mapeará el puerto 3000 y montará un volumen para que la base de datos persista fuera del contenedor, en una nueva carpeta `data` que se creará en tu directorio actual.
     ```bash
-    docker run -p 3000:3000 -v $(pwd)/data:/usr/src/app ap-pos-app
+    docker run -p 3000:3000 -v $(pwd)/data:/usr/src/app/data ap-pos-app
     ```
-    *Nota: El comando anterior crea un directorio `data` en tu carpeta actual para almacenar `ap-pos.db`.*
+    *Nota: La primera vez que ejecutes esto, se creará un directorio `data` en tu carpeta actual para almacenar `ap-pos.db`.*
 
 ## Autores
 - **Gemini**

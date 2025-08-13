@@ -40,15 +40,29 @@ function templateTicket(mov, settings) {
   
   lines.push('<div class="t-divider"></div>');
   lines.push(`<div><span class="t-bold">${esc(mov.tipo)}</span></div>`);
-  if (mov.cliente) lines.push(`<div class="t-small">Cliente: ${esc(mov.cliente)}</div>`);
+  if (mov.client) lines.push(`<div class="t-small">Cliente: ${esc(mov.client.nombre)}</div>`);
   if (mov.concepto) lines.push(`<div class="t-small">Concepto: ${esc(mov.concepto)}</div>`);
   if (mov.staff)  lines.push(`<div class="t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
   if (mov.metodo) lines.push(`<div class="t-small">Método: ${esc(mov.metodo)}</div>`);
   if (mov.notas)  lines.push(`<div class="t-small">Notas: ${esc(mov.notas)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div class="t-row t-bold"><span>Total</span><span>$${montoFormateado}</span></div>`);
+  lines.push(`<div class="t-row t-bold"><span>Total</span><span>${montoFormateado}</span></div>`);
   
+  // Sección de consentimientos
+  if (mov.client && (mov.client.esOncologico || mov.client.consentimiento)) {
+    lines.push('<div class="t-divider"></div>');
+    if (mov.client.esOncologico) {
+      lines.push('<div class="t-section t-bold t-center">Consentimiento Oncológico</div>');
+      lines.push(`<div class="t-small">El cliente declara ser paciente oncológico y que la información de su médico es veraz.</div>`);
+      if (mov.client.nombreMedico) lines.push(`<div class="t-small">Médico: ${esc(mov.client.nombreMedico)}</div>`);
+      if (mov.client.telefonoMedico) lines.push(`<div class="t-small">Tel. Médico: ${esc(mov.client.telefonoMedico)}</div>`);
+      if (mov.client.cedulaMedico) lines.push(`<div class="t-small">Cédula: ${esc(mov.client.cedulaMedico)}</div>`);
+    }
+    lines.push('<div class="t-divider"></div>');
+    lines.push(`<div class="t-small t-center">Al consentir el servicio, declara que la información médica proporcionada es veraz.</div>`);
+  }
+
   if (settings.leyenda) lines.push(`<div class="t-footer t-center t-small">${esc(settings.leyenda)}</div>`);
   
   lines.push('</div>');
