@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
 let settings = {};
 let movements = [];
 let clients = [];
+let incomeChart = null;
 
 // --- DOM ELEMENTS ---
 const formSettings = document.getElementById('formSettings');
@@ -30,6 +31,53 @@ const tblClientsBody = document.getElementById('tblClients')?.querySelector('tbo
 const clientDatalist = document.getElementById('client-list');
 
 // --- LÓGICA DE NEGOCIO ---
+
+async function loadDashboardData() {
+  try {
+    const response = await fetch('/api/dashboard');
+    if (!response.ok) throw new Error('Failed to fetch dashboard data');
+    const data = await response.json();
+
+    // Update stat cards
+    document.getElementById('stat-total-income').textContent = `${Number(data.totalIncome || 0).toFixed(2)}`;
+    document.getElementById('stat-total-movements').textContent = data.totalMovements || 0;
+
+    // Update chart
+    const ctx = document.getElementById('incomeChart').getContext('2d');
+    const chartData = {
+      labels: data.incomeByService.map(item => item.tipo),
+      datasets: [{
+        label: 'Ingresos por Servicio',
+        data: data.incomeByService.map(item => item.total),
+        backgroundColor: [
+          '#FF6384',
+          '#36A2EB',
+          '#FFCE56',
+          '#4BC0C0',
+          '#9966FF',
+          '#FF9F40'
+        ],
+      }]
+    };
+
+    if (incomeChart) {
+      incomeChart.data = chartData;
+      incomeChart.update();
+    } else {
+      incomeChart = new Chart(ctx, {
+        type: 'pie',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading dashboard:', error);
+  }
+}
+
 
 function generateFolio() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -302,6 +350,10 @@ function handleTabChange(e) {
   const tabId = tabButton.dataset.tab;
   tabButton.classList.add('active');
   document.getElementById(tabId)?.classList.add('active');
+
+  if (tabId === 'tab-dashboard') {
+    loadDashboardData();
+  }
 }
 
 function handleTestTicket() {
@@ -322,8 +374,23 @@ function handleTestTicket() {
 
 // --- INICIALIZACIÓN ---
 
-function initializeApp() {
+async function initializeApp() {
+  // Primero, verificar la autenticación
+  try {
+    const authResponse = await fetch('/api/check-auth');
+    const authData = await authResponse.json();
+    if (!authData.isAuthenticated) {
+      window.location.href = '/login.html';
+      return; // Detener la inicialización si no está autenticado
+    }
+  } catch (error) {
+    console.error('Authentication check failed', error);
+    window.location.href = '/login.html';
+    return;
+  }
+
   const tabs = document.querySelector('.tabs');
+  const btnLogout = document.getElementById('btnLogout');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
   formMove?.addEventListener('submit', handleNewMovement);
@@ -333,6 +400,12 @@ function initializeApp() {
   btnTestTicket?.addEventListener('click', handleTestTicket);
   formClient?.addEventListener('submit', handleClientForm);
   tabs?.addEventListener('click', handleTabChange);
+  
+  btnLogout?.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
   document.getElementById('btnCancelEditClient')?.addEventListener('click', () => {
     formClient.reset();
     document.getElementById('c-id').value = '';
@@ -348,10 +421,13 @@ function initializeApp() {
     renderTable();
     renderClientsTable();
     updateClientDatalist();
+    // Cargar datos del dashboard al inicio
+    loadDashboardData();
   }).catch(error => {
     console.error('CRITICAL: Failed to load initial data. The app may not function correctly.', error);
     alert('Error Crítico: No se pudieron cargar los datos del servidor. Asegúrate de que el servidor (npm start) esté corriendo y que no haya errores en la terminal del servidor.');
   });
 }
+
 
 document.addEventListener('DOMContentLoaded', initializeApp);

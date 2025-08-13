@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AP-POS — v0.2.1</title>
   <link rel="stylesheet" href="styles.css?v=1.1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <main class="container">
@@ -12,14 +13,37 @@
       <!-- Logo del negocio en lugar de texto -->
       <img src="src/logo.png" alt="Ale Ponce" class="header-logo">
       <nav class="tabs">
-        <button type="button" class="tab-link active" data-tab="tab-movements">Recibos</button>
+        <button type="button" class="tab-link active" data-tab="tab-dashboard">Dashboard</button>
+        <button type="button" class="tab-link" data-tab="tab-movements">Recibos</button>
         <button type="button" class="tab-link" data-tab="tab-clients">Clientes</button>
         <button type="button" class="tab-link" data-tab="tab-settings">Configuración</button>
       </nav>
+      <button type="button" id="btnLogout" class="btn-danger">Cerrar Sesión</button>
     </header>
 
+    <!-- Pestaña de Dashboard -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="section">
+        <h2>Dashboard</h2>
+        <div class="dashboard-stats">
+          <div class="stat-card">
+            <h3>Ingresos Totales</h3>
+            <p id="stat-total-income">$0.00</p>
+          </div>
+          <div class="stat-card">
+            <h3>Servicios Realizados</h3>
+            <p id="stat-total-movements">0</p>
+          </div>
+        </div>
+        <div class="dashboard-chart">
+          <h3>Ingresos por Servicio</h3>
+          <canvas id="incomeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
     <!-- Pestaña de Movimientos/Recibos -->
-    <div id="tab-movements" class="tab-content active">
+    <div id="tab-movements" class="tab-content">
       <div class="section">
         <h2>Nuevo Movimiento</h2>
         <form id="formMove">
@@ -34,6 +58,7 @@
               <option value="Microblading">Microblading</option>
               <option value="Lashes">Lashes</option>
               <option value="Nail Art">Nail Art</option>
+              <option value="Pago">Pago</option>
             </select>
             <label>Fecha de Cita:</label>
             <input type="date" id="m-fecha-cita" />
