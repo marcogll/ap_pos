@@ -234,9 +234,11 @@ function renderUsersTable() {
     users.forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td>${u.name}</td>
             <td>${u.username}</td>
             <td>${u.role === 'admin' ? 'Administrador' : 'Usuario'}</td>
             <td>
+                <button class="action-btn" data-id="${u.id}" data-action="edit-user">Editar</button>
                 ${u.id !== currentUser.id ? `<button class="action-btn" data-id="${u.id}" data-action="delete-user">Eliminar</button>` : ''}
             </td>
         `;
@@ -276,10 +278,11 @@ async function handleSaveSettings(e) {
 
 async function handleSaveCredentials(e) {
     e.preventDefault();
+    const name = document.getElementById('s-name').value;
     const username = document.getElementById('s-username').value;
     const password = document.getElementById('s-password').value;
 
-    const body = { username };
+    const body = { username, name };
     if (password) {
         body.password = password;
     }
@@ -293,6 +296,8 @@ async function handleSaveCredentials(e) {
 
         if (response.ok) {
             alert('Credenciales actualizadas.');
+            currentUser.name = name; // Actualizar el nombre en el estado local
+            currentUser.username = username;
             document.getElementById('s-password').value = '';
         } else {
             const error = await response.json();
@@ -303,31 +308,54 @@ async function handleSaveCredentials(e) {
     }
 }
 
-async function handleAddUser(e) {
+async function handleAddOrUpdateUser(e) {
     e.preventDefault();
+    const id = document.getElementById('u-id').value;
+    const name = document.getElementById('u-name').value;
     const username = document.getElementById('u-username').value;
     const password = document.getElementById('u-password').value;
     const role = document.getElementById('u-role').value;
 
+    const isUpdate = !!id;
+    const url = isUpdate ? `/api/users/${id}` : '/api/users';
+    const method = isUpdate ? 'PUT' : 'POST';
+
+    const body = { name, username, role };
+    if (password || !isUpdate) {
+        if (!password && !isUpdate) {
+            alert('La contraseña es obligatoria para nuevos usuarios.');
+            return;
+        }
+        body.password = password;
+    }
+
     try {
-        const response = await fetch('/api/users', {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, role })
+            body: JSON.stringify(body)
         });
 
-        const newUser = await response.json();
+        const result = await response.json();
 
         if (response.ok) {
-            alert('Usuario creado exitosamente.');
-            users.push(newUser);
+            alert(`Usuario ${isUpdate ? 'actualizado' : 'creado'} exitosamente.`);
+            if (isUpdate) {
+                const index = users.findIndex(u => u.id === parseInt(id));
+                if (index > -1) {
+                    users[index] = { ...users[index], name, username, role };
+                }
+            } else {
+                users.push(result);
+            }
             renderUsersTable();
             formAddUser.reset();
+            document.getElementById('u-id').value = '';
         } else {
-            alert(`Error: ${newUser.error}`);
+            alert(`Error: ${result.error}`);
         }
     } catch (error) {
-        alert('Error de conexión al crear usuario.');
+        alert('Error de conexión al guardar el usuario.');
     }
 }
 
@@ -381,7 +409,7 @@ async function handleNewMovement(e) {
     monto: Number(monto.toFixed(2)),
     metodo: document.getElementById('m-metodo').value,
     concepto: document.getElementById('m-concepto').value,
-    staff: document.getElementById('m-staff').value,
+    staff: currentUser.name, // Usar el nombre del usuario actual
     notas: document.getElementById('m-notas').value,
     fechaCita: document.getElementById('m-fecha-cita').value,
     horaCita: document.getElementById('m-hora-cita').value,
@@ -424,6 +452,16 @@ function handleTableClick(e) {
           deleteClient(id);
         }
       }
+    } else if (action === 'edit-user') {
+        const user = users.find(u => u.id === parseInt(id));
+        if (user) {
+            document.getElementById('u-id').value = user.id;
+            document.getElementById('u-name').value = user.name;
+            document.getElementById('u-username').value = user.username;
+            document.getElementById('u-role').value = user.role;
+            document.getElementById('u-password').value = ''; // Limpiar campo de contraseña
+            document.getElementById('u-password').placeholder = 'Dejar en blanco para no cambiar';
+        }
     } else if (action === 'delete-user') {
         deleteUser(parseInt(id, 10));
     }
@@ -508,6 +546,7 @@ function setupUIForRole(role) {
     const dashboardTab = document.querySelector('[data-tab="tab-dashboard"]');
     const settingsTab = document.querySelector('[data-tab="tab-settings"]');
     const userManagementSection = document.getElementById('user-management-section');
+    const staffInput = document.getElementById('m-staff');
 
     if (role === 'admin') {
         // El admin puede ver todo
@@ -525,6 +564,11 @@ function setupUIForRole(role) {
         dashboardTab.style.display = 'none';
         settingsTab.style.display = 'none';
         userManagementSection.style.display = 'none';
+    }
+    
+    // Deshabilitar el campo "Atendió" para todos, ya que se autocompleta
+    if (staffInput) {
+        staffInput.disabled = true;
     }
 }
 
@@ -563,6 +607,7 @@ async function initializeApp() {
   // 3. Añadir manejadores de eventos.
   const tabs = document.querySelector('.tabs');
   const btnLogout = document.getElementById('btnLogout');
+  const btnCancelEditUser = document.getElementById('btnCancelEditUser');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
   formCredentials?.addEventListener('submit', handleSaveCredentials);
@@ -575,7 +620,7 @@ async function initializeApp() {
   tabs?.addEventListener('click', handleTabChange);
   
   if (currentUser.role === 'admin') {
-      formAddUser?.addEventListener('submit', handleAddUser);
+      formAddUser?.addEventListener('submit', handleAddOrUpdateUser);
       tblUsersBody?.addEventListener('click', handleTableClick);
   }
   
@@ -587,6 +632,13 @@ async function initializeApp() {
   document.getElementById('btnCancelEditClient')?.addEventListener('click', () => {
     formClient.reset();
     document.getElementById('c-id').value = '';
+  });
+
+  btnCancelEditUser?.addEventListener('click', (e) => {
+    e.preventDefault();
+    formAddUser.reset();
+    document.getElementById('u-id').value = '';
+    document.getElementById('u-password').placeholder = 'Contraseña';
   });
 
   // 4. Cargar el resto de los datos de la aplicación.
@@ -603,7 +655,9 @@ async function initializeApp() {
     updateClientDatalist();
     
     if (currentUser) {
+        document.getElementById('s-name').value = currentUser.name || '';
         document.getElementById('s-username').value = currentUser.username;
+        document.getElementById('m-staff').value = currentUser.name || '';
     }
     
     // 5. Configurar la UI y activar la pestaña inicial correcta.

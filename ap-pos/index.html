@@ -183,6 +183,8 @@
         <h2>Mis Credenciales</h2>
         <form id="formCredentials">
           <div class="form-grid">
+            <label>Mi Nombre:</label>
+            <input type="text" id="s-name" required />
             <label>Mi Usuario:</label>
             <input type="text" id="s-username" required />
             <label>Nueva Contraseña:</label>
@@ -197,13 +199,16 @@
       <div class="section" id="user-management-section" style="display: none;">
         <h2>Gestión de Usuarios</h2>
         <div class="sub-section">
-          <h3>Añadir Nuevo Usuario</h3>
+          <h3>Añadir/Editar Usuario</h3>
           <form id="formAddUser">
+            <input type="hidden" id="u-id" />
             <div class="form-grid">
-              <label>Nuevo Usuario:</label>
+              <label>Nombre:</label>
+              <input type="text" id="u-name" required />
+              <label>Usuario:</label>
               <input type="text" id="u-username" required />
               <label>Contraseña:</label>
-              <input type="password" id="u-password" required />
+              <input type="password" id="u-password" placeholder="Dejar en blanco para no cambiar" />
               <label>Rol:</label>
               <select id="u-role">
                 <option value="user">Usuario (Ventas)</option>
@@ -211,7 +216,8 @@
               </select>
             </div>
             <div class="form-actions">
-              <button type="submit">Crear Usuario</button>
+              <button type="submit">Guardar Usuario</button>
+              <button type="reset" id="btnCancelEditUser" class="btn-danger">Cancelar Edición</button>
             </div>
           </form>
         </div>
@@ -221,6 +227,7 @@
             <table id="tblUsers">
               <thead>
                 <tr>
+                  <th>Nombre</th>
                   <th>Usuario</th>
                   <th>Rol</th>
                   <th>Acciones</th>

@@ -42,7 +42,7 @@ function templateTicket(mov, settings) {
   lines.push(`<div><span class="t-bold">${esc(mov.tipo)}</span></div>`);
   if (mov.cliente) lines.push(`<div class="t-small">Cliente: ${esc(mov.cliente)}</div>`);
   if (mov.concepto) lines.push(`<div class="t-small">Concepto: ${esc(mov.concepto)}</div>`);
-  if (mov.staff)  lines.push(`<div class="t-small">Atendió: ${esc(mov.staff)}</div>`);
+  if (mov.staff)  lines.push(`<div class="t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
   if (mov.metodo) lines.push(`<div class="t-small">Método: ${esc(mov.metodo)}</div>`);
   if (mov.notas)  lines.push(`<div class="t-small">Notas: ${esc(mov.notas)}</div>`);
   

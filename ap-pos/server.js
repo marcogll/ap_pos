@@ -42,26 +42,34 @@ db.serialize(() => {
         }
     });
 
+    db.run("ALTER TABLE users ADD COLUMN name TEXT", (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error("Error adding name column to users table:", err.message);
+        }
+    });
+
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT,
-        role TEXT DEFAULT 'user'
+        role TEXT DEFAULT 'user',
+        name TEXT
     )`, (err) => {
         if (err) return;
         // Solo intentar insertar si la tabla fue creada o ya existía
         const adminUsername = 'admin';
         const defaultPassword = 'password';
+        const defaultName = 'Admin'; // Nombre por defecto para el admin
 
         db.get('SELECT * FROM users WHERE username = ?', [adminUsername], (err, row) => {
             if (err) return;
             if (!row) {
                 bcrypt.hash(defaultPassword, SALT_ROUNDS, (err, hash) => {
                     if (err) return;
-                    // Insertar admin con su rol
-                    db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [adminUsername, hash, 'admin'], (err) => {
+                    // Insertar admin con su rol y nombre
+                    db.run('INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)', [adminUsername, hash, 'admin', defaultName], (err) => {
                         if (!err) {
-                            console.log(`Default user '${adminUsername}' created with password '${defaultPassword}' and role 'admin'. Please change it.`);
+                            console.log(`Default user '${adminUsername}' created with name '${defaultName}', password '${defaultPassword}' and role 'admin'. Please change it.`);
                         }
                     });
                 });
@@ -129,7 +137,8 @@ app.post('/api/login', (req, res) => {
             }
             req.session.userId = user.id;
             req.session.role = user.role; // Guardar rol en la sesión
-            res.json({ message: 'Login successful', role: user.role });
+            req.session.name = user.name; // Guardar nombre en la sesión
+            res.json({ message: 'Login successful', role: user.role, name: user.name });
         });
     });
 });
@@ -147,7 +156,7 @@ app.post('/api/logout', (req, res) => {
 // Endpoint para verificar el estado de la autenticación en el frontend
 app.get('/api/check-auth', (req, res) => {
     if (req.session.userId) {
-        res.json({ isAuthenticated: true, role: req.session.role });
+        res.json({ isAuthenticated: true, role: req.session.role, name: req.session.name });
     } else {
         res.json({ isAuthenticated: false });
     }
@@ -267,7 +276,7 @@ app.use('/api', apiRouter);
 // --- User Management (Admin) ---
 // Proteger estas rutas para que solo los admins puedan usarlas
 apiRouter.get('/users', isAdmin, (req, res) => {
-    db.all("SELECT id, username, role FROM users", [], (err, rows) => {
+    db.all("SELECT id, username, role, name FROM users", [], (err, rows) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -277,9 +286,9 @@ apiRouter.get('/users', isAdmin, (req, res) => {
 });
 
 apiRouter.post('/users', isAdmin, (req, res) => {
-    const { username, password, role } = req.body;
-    if (!username || !password || !role) {
-        return res.status(400).json({ error: 'Username, password, and role are required' });
+    const { username, password, role, name } = req.body;
+    if (!username || !password || !role || !name) {
+        return res.status(400).json({ error: 'Username, password, name, and role are required' });
     }
     if (role !== 'admin' && role !== 'user') {
         return res.status(400).json({ error: 'Invalid role' });
@@ -289,15 +298,38 @@ apiRouter.post('/users', isAdmin, (req, res) => {
         if (err) {
             return res.status(500).json({ error: 'Error hashing password' });
         }
-        db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hash, role], function(err) {
+        db.run('INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)', [username, hash, role, name], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(409).json({ error: 'Username already exists' });
                 }
                 return res.status(500).json({ error: err.message });
             }
-            res.status(201).json({ id: this.lastID, username, role });
+            res.status(201).json({ id: this.lastID, username, role, name });
         });
+    });
+});
+
+// Nueva ruta para actualizar un usuario (solo admin)
+apiRouter.put('/users/:id', isAdmin, (req, res) => {
+    const { id } = req.params;
+    const { username, role, name } = req.body;
+
+    if (!username || !role || !name) {
+        return res.status(400).json({ error: 'Username, role, and name are required' });
+    }
+
+    db.run('UPDATE users SET username = ?, role = ?, name = ? WHERE id = ?', [username, role, name, id], function(err) {
+        if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+                return res.status(409).json({ error: 'Username already exists' });
+            }
+            return res.status(500).json({ error: err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'User updated successfully' });
     });
 });
 
@@ -321,7 +353,7 @@ apiRouter.delete('/users/:id', isAdmin, (req, res) => {
 
 // --- Current User Settings ---
 apiRouter.get('/user', (req, res) => {
-    db.get("SELECT id, username, role FROM users WHERE id = ?", [req.session.userId], (err, row) => {
+    db.get("SELECT id, username, role, name FROM users WHERE id = ?", [req.session.userId], (err, row) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -331,9 +363,9 @@ apiRouter.get('/user', (req, res) => {
 });
 
 apiRouter.post('/user', (req, res) => {
-    const { username, password } = req.body;
-    if (!username) {
-        return res.status(400).json({ error: 'Username is required' });
+    const { username, password, name } = req.body;
+    if (!username || !name) {
+        return res.status(400).json({ error: 'Username and name are required' });
     }
 
     if (password) {
@@ -342,7 +374,7 @@ apiRouter.post('/user', (req, res) => {
             if (err) {
                 return res.status(500).json({ error: 'Error hashing password' });
             }
-            db.run('UPDATE users SET username = ?, password = ? WHERE id = ?', [username, hash, req.session.userId], function(err) {
+            db.run('UPDATE users SET username = ?, password = ?, name = ? WHERE id = ?', [username, hash, name, req.session.userId], function(err) {
                 if (err) {
                     return res.status(500).json({ error: err.message });
                 }
@@ -350,12 +382,12 @@ apiRouter.post('/user', (req, res) => {
             });
         });
     } else {
-        // Si no se proporciona contraseña, solo actualizar el nombre de usuario
-        db.run('UPDATE users SET username = ? WHERE id = ?', [username, req.session.userId], function(err) {
+        // Si no se proporciona contraseña, solo actualizar el nombre de usuario y el nombre
+        db.run('UPDATE users SET username = ?, name = ? WHERE id = ?', [username, name, req.session.userId], function(err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
-            res.json({ message: 'Username updated successfully' });
+            res.json({ message: 'Username and name updated successfully' });
         });
     }
 });
