@@ -1,25 +1,29 @@
-# 1. Imagen Base: Usamos una imagen oficial de Node.js, versión 18-alpine.
-# 'alpine' es una versión muy ligera, ideal para producción.
+# 1. Imagen base: Node.js 18 en Alpine (ligera)
 FROM node:18-alpine
 
-# 2. Directorio de Trabajo: Establecemos el directorio de trabajo dentro del contenedor.
+# 2. Variable de entorno para producción
+ENV NODE_ENV=production
+
+# 3. Directorio de trabajo
 WORKDIR /app
 
-# 3. Copiar Archivos de Dependencias: Copiamos package.json y package-lock.json.
-# Hacemos esto en un paso separado para aprovechar el caché de Docker.
-# Si no cambian estos archivos, Docker no reinstalará las dependencias.
+# 4. Copiar dependencias primero para aprovechar caché
 COPY package*.json ./
 
-# 4. Instalar Dependencias: Instalamos las dependencias del proyecto.
-RUN npm install
+# 5. Instalar dependencias de producción y limpiar caché
+RUN npm ci --omit=dev && npm cache clean --force
 
-# 5. Copiar el Resto de la Aplicación: Copiamos todos los demás archivos.
-# Los archivos en .dockerignore serán excluidos automáticamente.
+# 6. Copiar el resto de la aplicación
 COPY . .
 
-# 6. Exponer Puerto: Informamos a Docker que el contenedor escucha en el puerto 3000.
+# 7. Crear usuario no root y darle permisos
+RUN addgroup -S app && adduser -S app -G app \
+    && chown -R app:app /app
+USER app
+
+# 8. Exponer el puerto
 EXPOSE 3000
 
-# 7. Comando de Inicio: El comando que se ejecutará cuando el contenedor inicie.
-# Usamos 'npm start' que definiste en tu package.json.
-CMD [ "npm", "start" ]
+# 9. Comando de inicio
+CMD ["npm", "start"]
+
