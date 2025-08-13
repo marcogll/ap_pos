@@ -115,12 +115,20 @@ async function saveClient(clientData) {
   } else {
     isUpdate = !!document.getElementById('c-id').value;
     const id = isUpdate ? document.getElementById('c-id').value : crypto.randomUUID();
+
     clientToSave = {
       id: id,
       nombre: document.getElementById('c-nombre').value,
       telefono: document.getElementById('c-telefono').value,
+      genero: document.getElementById('c-genero').value,
       cumpleaños: document.getElementById('c-cumple').value,
       consentimiento: document.getElementById('c-consent').checked,
+      esOncologico: document.getElementById('c-esOncologico').checked,
+      oncologoAprueba: document.getElementById('c-oncologoAprueba').checked,
+      nombreMedico: document.getElementById('c-nombreMedico').value,
+      telefonoMedico: document.getElementById('c-telefonoMedico').value,
+      cedulaMedico: document.getElementById('c-cedulaMedico').value,
+      pruebaAprobacion: document.getElementById('c-pruebaAprobacion').checked,
     };
   }
 
@@ -143,6 +151,7 @@ async function saveClient(clientData) {
   if (!clientData) {
     document.getElementById('formClient').reset();
     document.getElementById('c-id').value = '';
+    document.getElementById('oncologico-fields').classList.add('hidden');
   }
 }
 
@@ -445,9 +454,26 @@ function handleTableClick(e) {
         if (action === 'edit-client') {
           document.getElementById('c-id').value = client.id;
           document.getElementById('c-nombre').value = client.nombre;
-          document.getElementById('c-telefono').value = client.telefono;
+          document.getElementById('c-telefono').value = client.telefono || '';
+          document.getElementById('c-genero').value = client.genero || '';
           document.getElementById('c-cumple').value = client.cumpleaños;
           document.getElementById('c-consent').checked = client.consentimiento;
+          
+          // Campos oncológicos
+          const esOncologicoCheckbox = document.getElementById('c-esOncologico');
+          const oncologicoFields = document.getElementById('oncologico-fields');
+          esOncologicoCheckbox.checked = client.esOncologico;
+          if (client.esOncologico) {
+            oncologicoFields.classList.remove('hidden');
+          } else {
+            oncologicoFields.classList.add('hidden');
+          }
+          document.getElementById('c-oncologoAprueba').checked = client.oncologoAprueba;
+          document.getElementById('c-nombreMedico').value = client.nombreMedico || '';
+          document.getElementById('c-telefonoMedico').value = client.telefonoMedico || '';
+          document.getElementById('c-cedulaMedico').value = client.cedulaMedico || '';
+          document.getElementById('c-pruebaAprobacion').checked = client.pruebaAprobacion;
+
         } else if (action === 'delete-client') {
           deleteClient(id);
         }
@@ -632,6 +658,16 @@ async function initializeApp() {
   document.getElementById('btnCancelEditClient')?.addEventListener('click', () => {
     formClient.reset();
     document.getElementById('c-id').value = '';
+    document.getElementById('oncologico-fields').classList.add('hidden');
+  });
+
+  document.getElementById('c-esOncologico')?.addEventListener('change', (e) => {
+    const oncologicoFields = document.getElementById('oncologico-fields');
+    if (e.target.checked) {
+      oncologicoFields.classList.remove('hidden');
+    } else {
+      oncologicoFields.classList.add('hidden');
+    }
   });
 
   btnCancelEditUser?.addEventListener('click', (e) => {

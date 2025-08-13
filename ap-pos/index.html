@@ -4,8 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ale Ponce | AlMa</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css?v=1.1" />
+  <!-- Favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23444' d='M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V6h16v12zM6 10h2v4H6zm3 0h2v4H9zm3 0h2v4h-2zm3 0h2v4h-2z'/%3E%3C/svg%3E">
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet">
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css?v=1.2" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -14,12 +21,22 @@
       <!-- Logo del negocio en lugar de texto -->
       <img src="src/logo.png" alt="Ale Ponce" class="header-logo">
       <nav class="tabs">
-        <button type="button" class="tab-link" data-tab="tab-dashboard">Dashboard</button>
-        <button type="button" class="tab-link" data-tab="tab-movements">Recibos</button>
-        <button type="button" class="tab-link" data-tab="tab-clients">Clientes</button>
-        <button type="button" class="tab-link" data-tab="tab-settings">Configuración</button>
+        <button type="button" class="tab-link" data-tab="tab-dashboard">
+          <span class="material-icons-outlined">dashboard</span>Dashboard
+        </button>
+        <button type="button" class="tab-link" data-tab="tab-movements">
+          <span class="material-icons-outlined">receipt_long</span>Recibos
+        </button>
+        <button type="button" class="tab-link" data-tab="tab-clients">
+          <span class="material-icons-outlined">groups</span>Clientes
+        </button>
+        <button type="button" class="tab-link" data-tab="tab-settings">
+          <span class="material-icons-outlined">settings</span>Configuración
+        </button>
       </nav>
-      <button type="button" id="btnLogout" class="btn-danger">Cerrar Sesión</button>
+      <button type="button" id="btnLogout" class="btn-icon btn-danger">
+        <span class="material-icons-outlined">logout</span>
+      </button>
     </header>
 
     <!-- Pestaña de Dashboard -->
@@ -114,20 +131,64 @@
         <h2>Administrar Clientes</h2>
         <form id="formClient">
           <input type="hidden" id="c-id" />
-          <div class="form-grid client-grid">
-            <label>Nombre:</label>
+          <div class="form-grid-single">
+            <label for="c-nombre">Nombre:</label>
             <input type="text" id="c-nombre" required />
-            <label>Teléfono:</label>
+
+            <label for="c-telefono">Teléfono:</label>
             <input type="tel" id="c-telefono" />
-            <label>Cumpleaños:</label>
+
+            <label for="c-genero">Género:</label>
+            <select id="c-genero">
+              <option value="">-- Seleccionar --</option>
+              <option value="Mujer">Mujer</option>
+              <option value="Hombre">Hombre</option>
+            </select>
+
+            <label for="c-cumple">Cumpleaños:</label>
             <input type="date" id="c-cumple" />
-            <label></label> <!-- Etiqueta vacía para alinear el checkbox -->
+            
             <div class="checkbox-container">
               <input type="checkbox" id="c-consent" />
-              <label for="c-consent">Consentimiento médico</label>
+              <label for="c-consent">¿Consentimiento médico informado completo?</label>
+            </div>
+
+            <div class="checkbox-container">
+              <input type="checkbox" id="c-esOncologico" />
+              <label for="c-esOncologico">¿Es paciente oncológico?</label>
             </div>
           </div>
-          <div class="form-actions">
+
+          <!-- Campos condicionales para paciente oncológico -->
+          <div id="oncologico-fields" class="sub-section hidden">
+            <h3>Información Oncológica</h3>
+            <div class="form-grid-single">
+              <div class="checkbox-container">
+                <input type="checkbox" id="c-oncologoAprueba" />
+                <label for="c-oncologoAprueba">¿Oncólogo aprueba procedimiento?</label>
+              </div>
+
+              <label for="c-nombreMedico">Nombre del Médico:</label>
+              <input type="text" id="c-nombreMedico" />
+
+              <label for="c-telefonoMedico">Teléfono del Médico:</label>
+              <input type="tel" id="c-telefonoMedico" />
+
+              <label for="c-cedulaMedico">Cédula Profesional:</label>
+              <input type="text" id="c-cedulaMedico" />
+
+              <div class="checkbox-container">
+                <input type="checkbox" id="c-pruebaAprobacion" />
+                <label for="c-pruebaAprobacion">¿Presenta prueba de aprobación?</label>
+              </div>
+              
+              <p class="data-location-info">
+                El consentimiento del médico debe ser presentado físicamente antes de la evaluación.
+              </p>
+            </div>
+          </div>
+
+          <div class="form-actions-single">
             <button type="submit">Guardar Cliente</button>
             <button type="reset" id="btnCancelEditClient" class="btn-danger">Limpiar</button>
           </div>
@@ -244,7 +305,7 @@
   </main>
 
   <footer class="main-footer-credits">
-    <p>v0.2.1</p>
+    <p>v0.3.0</p>
     <p>Autores: Gemini + Marco G.</p>
   </footer>
 

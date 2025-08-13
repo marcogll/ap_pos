@@ -82,7 +82,20 @@ db.serialize(() => {
 
     // Tablas existentes
     db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, nombre TEXT, telefono TEXT, cumpleaños TEXT, consentimiento INTEGER)`);
+    db.run(`CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY, 
+        nombre TEXT, 
+        telefono TEXT, 
+        genero TEXT,
+        cumpleaños TEXT, 
+        consentimiento INTEGER,
+        esOncologico INTEGER,
+        oncologoAprueba INTEGER,
+        nombreMedico TEXT,
+        telefonoMedico TEXT,
+        cedulaMedico TEXT,
+        pruebaAprobacion INTEGER
+    )`);
     db.run(`CREATE TABLE IF NOT EXISTS movements (id TEXT PRIMARY KEY, folio TEXT, fechaISO TEXT, clienteId TEXT, tipo TEXT, monto REAL, metodo TEXT, concepto TEXT, staff TEXT, notas TEXT, fechaCita TEXT, horaCita TEXT, FOREIGN KEY (clienteId) REFERENCES clients (id))`);
 });
 
@@ -211,9 +224,18 @@ apiRouter.get('/clients', (req, res) => {
 
 apiRouter.post('/clients', (req, res) => {
     const { client } = req.body;
-    const { id, nombre, telefono, cumpleaños, consentimiento } = client;
-    db.run(`INSERT OR REPLACE INTO clients (id, nombre, telefono, cumpleaños, consentimiento) VALUES (?, ?, ?, ?, ?)`,
-        [id, nombre, telefono, cumpleaños, consentimiento], function(err) {
+    const { 
+        id, nombre, telefono, genero, cumpleaños, consentimiento,
+        esOncologico, oncologoAprueba, nombreMedico, telefonoMedico, cedulaMedico, pruebaAprobacion 
+    } = client;
+    db.run(`INSERT OR REPLACE INTO clients (
+            id, nombre, telefono, genero, cumpleaños, consentimiento, 
+            esOncologico, oncologoAprueba, nombreMedico, telefonoMedico, cedulaMedico, pruebaAprobacion
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            id, nombre, telefono, genero, cumpleaños, consentimiento,
+            esOncologico, oncologoAprueba, nombreMedico, telefonoMedico, cedulaMedico, pruebaAprobacion
+        ], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
