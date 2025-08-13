@@ -23,10 +23,10 @@ Este es un sistema de punto de venta (POS) simple y moderno basado en la web, di
 
 ### Pasos para la Ejecución
 
-1.  **Clonar el Repositorio (si aplica):**
+1.  **Clonar el Repositorio:**
     ```bash
-    git clone <url-del-repositorio>
-    cd ap-webapp/ap-pos
+    git clone https://github.com/marcogll/ap_pos.git
+    cd ap_pos/ap-pos
     ```
 
 2.  **Instalar Dependencias:**
