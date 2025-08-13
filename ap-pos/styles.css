@@ -296,6 +296,9 @@ button.action-btn {
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  /* Fijar altura para evitar bucle infinito de redibujo de Chart.js */
+  position: relative;
+  height: 300px;
 }
 
 
