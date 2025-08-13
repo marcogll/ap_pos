@@ -35,10 +35,18 @@ const SALT_ROUNDS = 10;
 
 // Crear tabla de usuarios y usuario admin por defecto si no existen
 db.serialize(() => {
+    // Añadir columna 'role' si no existe
+    db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'", (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error("Error adding role column to users table:", err.message);
+        }
+    });
+
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
-        password TEXT
+        password TEXT,
+        role TEXT DEFAULT 'user'
     )`, (err) => {
         if (err) return;
         // Solo intentar insertar si la tabla fue creada o ya existía
@@ -50,12 +58,16 @@ db.serialize(() => {
             if (!row) {
                 bcrypt.hash(defaultPassword, SALT_ROUNDS, (err, hash) => {
                     if (err) return;
-                    db.run('INSERT INTO users (username, password) VALUES (?, ?)', [adminUsername, hash], (err) => {
+                    // Insertar admin con su rol
+                    db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [adminUsername, hash, 'admin'], (err) => {
                         if (!err) {
-                            console.log(`Default user '${adminUsername}' created with password '${defaultPassword}'. Please change it.`);
+                            console.log(`Default user '${adminUsername}' created with password '${defaultPassword}' and role 'admin'. Please change it.`);
                         }
                     });
                 });
+            } else {
+                // Si el usuario admin ya existe, asegurarse de que tenga el rol de admin
+                db.run("UPDATE users SET role = 'admin' WHERE username = ?", [adminUsername]);
             }
         });
     });
@@ -80,6 +92,24 @@ const isAuthenticated = (req, res, next) => {
   }
 };
 
+// Middleware para verificar si el usuario es admin
+const isAdmin = (req, res, next) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    db.get('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+        if (err || !user) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        if (user.role === 'admin') {
+            next();
+        } else {
+            return res.status(403).json({ error: 'Forbidden: Admins only' });
+        }
+    });
+};
+
+
 // --- AUTH API ROUTES ---
 
 app.post('/api/login', (req, res) => {
@@ -98,7 +128,8 @@ app.post('/api/login', (req, res) => {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
             req.session.userId = user.id;
-            res.json({ message: 'Login successful' });
+            req.session.role = user.role; // Guardar rol en la sesión
+            res.json({ message: 'Login successful', role: user.role });
         });
     });
 });
@@ -116,7 +147,7 @@ app.post('/api/logout', (req, res) => {
 // Endpoint para verificar el estado de la autenticación en el frontend
 app.get('/api/check-auth', (req, res) => {
     if (req.session.userId) {
-        res.json({ isAuthenticated: true });
+        res.json({ isAuthenticated: true, role: req.session.role });
     } else {
         res.json({ isAuthenticated: false });
     }
@@ -233,9 +264,64 @@ apiRouter.delete('/movements/:id', (req, res) => {
 // Registrar el router de la API protegida
 app.use('/api', apiRouter);
 
-// --- User Management ---
+// --- User Management (Admin) ---
+// Proteger estas rutas para que solo los admins puedan usarlas
+apiRouter.get('/users', isAdmin, (req, res) => {
+    db.all("SELECT id, username, role FROM users", [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+apiRouter.post('/users', isAdmin, (req, res) => {
+    const { username, password, role } = req.body;
+    if (!username || !password || !role) {
+        return res.status(400).json({ error: 'Username, password, and role are required' });
+    }
+    if (role !== 'admin' && role !== 'user') {
+        return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    bcrypt.hash(password, SALT_ROUNDS, (err, hash) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error hashing password' });
+        }
+        db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hash, role], function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ error: 'Username already exists' });
+                }
+                return res.status(500).json({ error: err.message });
+            }
+            res.status(201).json({ id: this.lastID, username, role });
+        });
+    });
+});
+
+apiRouter.delete('/users/:id', isAdmin, (req, res) => {
+    const { id } = req.params;
+    // Prevenir que el admin se elimine a sí mismo
+    if (parseInt(id, 10) === req.session.userId) {
+        return res.status(400).json({ error: "You cannot delete your own account." });
+    }
+    db.run(`DELETE FROM users WHERE id = ?`, id, function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        res.json({ message: 'User deleted' });
+    });
+});
+
+
+// --- Current User Settings ---
 apiRouter.get('/user', (req, res) => {
-    db.get("SELECT id, username FROM users WHERE id = ?", [req.session.userId], (err, row) => {
+    db.get("SELECT id, username, role FROM users WHERE id = ?", [req.session.userId], (err, row) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -274,25 +360,29 @@ apiRouter.post('/user', (req, res) => {
     }
 });
 
-// --- Dashboard Route ---
-apiRouter.get('/dashboard', (req, res) => {
+// --- Dashboard Route (Admin Only) ---
+apiRouter.get('/dashboard', isAdmin, (req, res) => {
     const queries = {
-        totalIncome: "SELECT SUM(monto) as total FROM movements WHERE tipo = 'Pago'",
+        totalIncome: "SELECT SUM(monto) as total FROM movements",
         totalMovements: "SELECT COUNT(*) as total FROM movements",
-        incomeByService: "SELECT tipo, SUM(monto) as total FROM movements WHERE tipo = 'Pago' GROUP BY tipo"
+        incomeByService: "SELECT tipo, SUM(monto) as total FROM movements GROUP BY tipo"
     };
 
     const results = {};
     const promises = Object.keys(queries).map(key => {
         return new Promise((resolve, reject) => {
-            db.all(queries[key], [], (err, rows) => {
+            const query = queries[key];
+            // Usar db.all para incomeByService y db.get para los demás para simplificar
+            const method = query.includes('GROUP BY') ? 'all' : 'get';
+            
+            db[method](query, [], (err, result) => {
                 if (err) {
                     return reject(err);
                 }
-                if (key === 'totalIncome' || key === 'totalMovements') {
-                    resolve({ key, value: rows[0] ? rows[0].total : 0 });
+                if (method === 'get') {
+                     resolve({ key, value: result ? result.total : 0 });
                 } else {
-                    resolve({ key, value: rows });
+                    resolve({ key, value: result });
                 }
             });
         });

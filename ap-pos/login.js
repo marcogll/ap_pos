@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.ok) {
+                const data = await response.json();
+                // Guardar el rol del usuario para usarlo en la app principal
+                sessionStorage.setItem('userRole', data.role);
                 window.location.href = '/'; // Redirigir a la página principal
             } else {
                 const errorData = await response.json();

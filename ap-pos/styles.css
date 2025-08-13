@@ -357,3 +357,17 @@ button.action-btn {
 .data-location-info strong {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
+
+/* --- Estilos del Pie de Página --- */
+.main-footer-credits {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.main-footer-credits p {
+  margin: 0 0 5px 0;
+}

@@ -1,0 +1,7 @@
+# Evitar que los módulos locales y los archivos de git se copien a la imagen
+node_modules
+.git
+.gitignore
+
+# Excluir la base de datos de desarrollo para que se pueda usar un volumen en su lugar
+ap-pos.db

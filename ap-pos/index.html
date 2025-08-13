@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AP-POS — v0.2.1</title>
+  <title>Ale Ponce | AlMa</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css?v=1.1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -13,7 +14,7 @@
       <!-- Logo del negocio en lugar de texto -->
       <img src="src/logo.png" alt="Ale Ponce" class="header-logo">
       <nav class="tabs">
-        <button type="button" class="tab-link active" data-tab="tab-dashboard">Dashboard</button>
+        <button type="button" class="tab-link" data-tab="tab-dashboard">Dashboard</button>
         <button type="button" class="tab-link" data-tab="tab-movements">Recibos</button>
         <button type="button" class="tab-link" data-tab="tab-clients">Clientes</button>
         <button type="button" class="tab-link" data-tab="tab-settings">Configuración</button>
@@ -22,7 +23,7 @@
     </header>
 
     <!-- Pestaña de Dashboard -->
-    <div id="tab-dashboard" class="tab-content active">
+    <div id="tab-dashboard" class="tab-content">
       <div class="section">
         <h2>Dashboard</h2>
         <div class="dashboard-stats">
@@ -178,11 +179,11 @@
           Toda la información de tu negocio (clientes, recibos y configuración) se guarda de forma segura en el archivo <strong>ap-pos.db</strong>, ubicado en la misma carpeta que la aplicación. Para hacer un respaldo, simplemente copia este archivo.
         </p>
       </div>
-      <div class="section">
-        <h2>Credenciales de Acceso</h2>
+      <div class="section" id="credentials-section">
+        <h2>Mis Credenciales</h2>
         <form id="formCredentials">
           <div class="form-grid">
-            <label>Usuario:</label>
+            <label>Mi Usuario:</label>
             <input type="text" id="s-username" required />
             <label>Nueva Contraseña:</label>
             <input type="password" id="s-password" placeholder="Dejar en blanco para no cambiar" />
@@ -192,8 +193,53 @@
           </div>
         </form>
       </div>
+      <!-- Sección de Gestión de Usuarios (Solo para Admins) -->
+      <div class="section" id="user-management-section" style="display: none;">
+        <h2>Gestión de Usuarios</h2>
+        <div class="sub-section">
+          <h3>Añadir Nuevo Usuario</h3>
+          <form id="formAddUser">
+            <div class="form-grid">
+              <label>Nuevo Usuario:</label>
+              <input type="text" id="u-username" required />
+              <label>Contraseña:</label>
+              <input type="password" id="u-password" required />
+              <label>Rol:</label>
+              <select id="u-role">
+                <option value="user">Usuario (Ventas)</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="submit">Crear Usuario</button>
+            </div>
+          </form>
+        </div>
+        <div class="sub-section">
+          <h3>Usuarios Existentes</h3>
+          <div class="table-wrapper">
+            <table id="tblUsers">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Los usuarios se insertarán aquí -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
+
+  <footer class="main-footer-credits">
+    <p>v0.2.1</p>
+    <p>Autores: Gemini + Marco G.</p>
+  </footer>
 
   <!-- Área de impresión oculta -->
   <div id="printArea" class="no-print"></div>

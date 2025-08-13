@@ -18,7 +18,9 @@ const DEFAULT_SETTINGS = {
 let settings = {};
 let movements = [];
 let clients = [];
+let users = [];
 let incomeChart = null;
+let currentUser = {};
 
 // --- DOM ELEMENTS ---
 const formSettings = document.getElementById('formSettings');
@@ -30,13 +32,23 @@ const formClient = document.getElementById('formClient');
 const tblClientsBody = document.getElementById('tblClients')?.querySelector('tbody');
 const clientDatalist = document.getElementById('client-list');
 const formCredentials = document.getElementById('formCredentials');
+const formAddUser = document.getElementById('formAddUser');
+const tblUsersBody = document.getElementById('tblUsers')?.querySelector('tbody');
 
 // --- LÓGICA DE NEGOCIO ---
 
 async function loadDashboardData() {
+  // Solo admins pueden cargar esto
+  if (currentUser.role !== 'admin') return;
   try {
     const response = await fetch('/api/dashboard');
-    if (!response.ok) throw new Error('Failed to fetch dashboard data');
+    if (!response.ok) {
+      if (response.status === 403) {
+        console.warn('Access to dashboard denied.');
+        return;
+      }
+      throw new Error('Failed to fetch dashboard data');
+    }
     const data = await response.json();
 
     // Update stat cards
@@ -50,14 +62,7 @@ async function loadDashboardData() {
       datasets: [{
         label: 'Ingresos por Servicio',
         data: data.incomeByService.map(item => item.total),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF',
-          '#FF9F40'
-        ],
+        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
       }]
     };
 
@@ -71,13 +76,13 @@ async function loadDashboardData() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false // Desactivar la animación para evitar la sensación de "bucle"
       }
     });
   } catch (error) {
     console.error('Error loading dashboard:', error);
   }
 }
-
 
 function generateFolio() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -224,6 +229,22 @@ function renderClientsTable() {
   });
 }
 
+function renderUsersTable() {
+    if (!tblUsersBody) return;
+    tblUsersBody.innerHTML = '';
+    users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${u.username}</td>
+            <td>${u.role === 'admin' ? 'Administrador' : 'Usuario'}</td>
+            <td>
+                ${u.id !== currentUser.id ? `<button class="action-btn" data-id="${u.id}" data-action="delete-user">Eliminar</button>` : ''}
+            </td>
+        `;
+        tblUsersBody.appendChild(tr);
+    });
+}
+
 function updateClientDatalist() {
   if (!clientDatalist) return;
   clientDatalist.innerHTML = '';
@@ -282,6 +303,52 @@ async function handleSaveCredentials(e) {
         alert('Error de conexión al guardar credenciales.');
     }
 }
+
+async function handleAddUser(e) {
+    e.preventDefault();
+    const username = document.getElementById('u-username').value;
+    const password = document.getElementById('u-password').value;
+    const role = document.getElementById('u-role').value;
+
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role })
+        });
+
+        const newUser = await response.json();
+
+        if (response.ok) {
+            alert('Usuario creado exitosamente.');
+            users.push(newUser);
+            renderUsersTable();
+            formAddUser.reset();
+        } else {
+            alert(`Error: ${newUser.error}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al crear usuario.');
+    }
+}
+
+async function deleteUser(id) {
+    if (confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
+        try {
+            const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                users = users.filter(u => u.id !== id);
+                renderUsersTable();
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión al eliminar usuario.');
+        }
+    }
+}
+
 
 async function handleNewMovement(e) {
   e.preventDefault();
@@ -358,6 +425,8 @@ function handleTableClick(e) {
           deleteClient(id);
         }
       }
+    } else if (action === 'delete-user') {
+        deleteUser(parseInt(id, 10));
     }
   }
 }
@@ -367,22 +436,36 @@ async function handleClientForm(e) {
   await saveClient();
 }
 
-function handleTabChange(e) {
-  const tabButton = e.target.closest('.tab-link');
-  if (!tabButton) return;
+function activateTab(tabId) {
+  if (!tabId) return;
 
-  e.preventDefault();
-
+  // Desactivar todas las pestañas y contenidos
   document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-  const tabId = tabButton.dataset.tab;
-  tabButton.classList.add('active');
-  document.getElementById(tabId)?.classList.add('active');
+  // Activar la pestaña y el contenido correctos
+  const tabButton = document.querySelector(`[data-tab="${tabId}"]`);
+  const tabContent = document.getElementById(tabId);
 
-  if (tabId === 'tab-dashboard') {
+  if (tabButton) {
+    tabButton.classList.add('active');
+  }
+  if (tabContent) {
+    tabContent.classList.add('active');
+  }
+
+  // Cargar datos dinámicos si es la pestaña del dashboard
+  if (tabId === 'tab-dashboard' && currentUser.role === 'admin') {
     loadDashboardData();
   }
+}
+
+function handleTabChange(e) {
+  const tabButton = e.target.closest('.tab-link');
+  if (!tabButton) return;
+  e.preventDefault();
+  const tabId = tabButton.dataset.tab;
+  activateTab(tabId);
 }
 
 function handleTestTicket() {
@@ -401,23 +484,63 @@ function handleTestTicket() {
     renderTicketAndPrint(demoMovement, settings);
 }
 
+function setupUIForRole(role) {
+    const dashboardTab = document.querySelector('[data-tab="tab-dashboard"]');
+    const settingsTab = document.querySelector('[data-tab="tab-settings"]');
+    const userManagementSection = document.getElementById('user-management-section');
+
+    if (role === 'admin') {
+        // El admin puede ver todo
+        dashboardTab.style.display = 'block';
+        settingsTab.style.display = 'block';
+        userManagementSection.style.display = 'block';
+        
+        // Cargar la lista de usuarios para el admin
+        fetch('/api/users').then(res => res.json()).then(data => {
+            users = data;
+            renderUsersTable();
+        });
+    } else {
+        // El usuario normal tiene vistas ocultas
+        dashboardTab.style.display = 'none';
+        settingsTab.style.display = 'none';
+        userManagementSection.style.display = 'none';
+    }
+}
+
+
 // --- INICIALIZACIÓN ---
 
 async function initializeApp() {
-  // Primero, verificar la autenticación
+  // 1. Verificar autenticación y obtener datos del usuario.
+  let userResponse;
   try {
-    const authResponse = await fetch('/api/check-auth');
-    const authData = await authResponse.json();
-    if (!authData.isAuthenticated) {
+    userResponse = await fetch('/api/user');
+    if (!userResponse.ok) {
+      // Si la respuesta no es 2xx, el usuario no está autenticado o hay un error.
       window.location.href = '/login.html';
-      return; // Detener la inicialización si no está autenticado
+      return;
     }
+
+    // Verificar que la respuesta sea JSON antes de procesarla.
+    const contentType = userResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('La respuesta del servidor no es JSON. Redirigiendo al login.');
+      window.location.href = '/login.html';
+      return;
+    }
+    
+    // 2. Procesar datos del usuario.
+    currentUser = await userResponse.json();
+
   } catch (error) {
-    console.error('Authentication check failed', error);
+    // Si hay un error de red, es probable que el servidor no esté corriendo.
+    console.error('Error de conexión al verificar la autenticación. Redirigiendo al login.', error);
     window.location.href = '/login.html';
     return;
   }
 
+  // 3. Añadir manejadores de eventos.
   const tabs = document.querySelector('.tabs');
   const btnLogout = document.getElementById('btnLogout');
   
@@ -431,6 +554,11 @@ async function initializeApp() {
   formClient?.addEventListener('submit', handleClientForm);
   tabs?.addEventListener('click', handleTabChange);
   
+  if (currentUser.role === 'admin') {
+      formAddUser?.addEventListener('submit', handleAddUser);
+      tblUsersBody?.addEventListener('click', handleTableClick);
+  }
+  
   btnLogout?.addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login.html';
@@ -441,25 +569,35 @@ async function initializeApp() {
     document.getElementById('c-id').value = '';
   });
 
+  // 4. Cargar el resto de los datos de la aplicación.
   Promise.all([
     load(KEY_SETTINGS, DEFAULT_SETTINGS),
     load(KEY_DATA, []),
     load(KEY_CLIENTS, []),
-    fetch('/api/user').then(res => res.json())
   ]).then(values => {
-    [settings, movements, clients, user] = values;
+    [settings, movements, clients] = values;
+    
     renderSettings();
     renderTable();
     renderClientsTable();
     updateClientDatalist();
-    if (user) {
-        document.getElementById('s-username').value = user.username;
+    
+    if (currentUser) {
+        document.getElementById('s-username').value = currentUser.username;
     }
-    // Cargar datos del dashboard al inicio
-    loadDashboardData();
+    
+    // 5. Configurar la UI y activar la pestaña inicial correcta.
+    setupUIForRole(currentUser.role);
+    
+    if (currentUser.role === 'admin') {
+        activateTab('tab-dashboard');
+    } else {
+        activateTab('tab-movements');
+    }
+
   }).catch(error => {
-    console.error('CRITICAL: Failed to load initial data. The app may not function correctly.', error);
-    alert('Error Crítico: No se pudieron cargar los datos del servidor. Asegúrate de que el servidor (npm start) esté corriendo y que no haya errores en la terminal del servidor.');
+    console.error('CRITICAL: Failed to load initial data.', error);
+    alert('Error Crítico: No se pudieron cargar los datos del servidor.');
   });
 }
 
