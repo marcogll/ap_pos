@@ -39,7 +39,7 @@ const tblUsersBody = document.getElementById('tblUsers')?.querySelector('tbody')
 
 async function loadDashboardData() {
   // Solo admins pueden cargar esto
-  if (currentUser.role !== 'admin') return;
+  if (currentUser.role !== 'admin' || !incomeChart) return;
   try {
     const response = await fetch('/api/dashboard');
     if (!response.ok) {
@@ -55,30 +55,11 @@ async function loadDashboardData() {
     document.getElementById('stat-total-income').textContent = `${Number(data.totalIncome || 0).toFixed(2)}`;
     document.getElementById('stat-total-movements').textContent = data.totalMovements || 0;
 
-    // Update chart
-    const ctx = document.getElementById('incomeChart').getContext('2d');
-    const chartData = {
-      labels: data.incomeByService.map(item => item.tipo),
-      datasets: [{
-        label: 'Ingresos por Servicio',
-        data: data.incomeByService.map(item => item.total),
-        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
-      }]
-    };
-
-    if (incomeChart) {
-      incomeChart.destroy();
-    }
+    // Update chart data instead of recreating it
+    incomeChart.data.labels = data.incomeByService.map(item => item.tipo);
+    incomeChart.data.datasets[0].data = data.incomeByService.map(item => item.total);
+    incomeChart.update();
     
-    incomeChart = new Chart(ctx, {
-      type: 'pie',
-      data: chartData,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false // Desactivar la animación para evitar la sensación de "bucle"
-      }
-    });
   } catch (error) {
     console.error('Error loading dashboard:', error);
   }
@@ -557,6 +538,25 @@ async function initializeApp() {
   if (currentUser.role === 'admin') {
       formAddUser?.addEventListener('submit', handleAddUser);
       tblUsersBody?.addEventListener('click', handleTableClick);
+
+      // Inicializar el gráfico vacío para el admin
+      const ctx = document.getElementById('incomeChart').getContext('2d');
+      incomeChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Ingresos por Servicio',
+            data: [],
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false
+        }
+      });
   }
   
   btnLogout?.addEventListener('click', async () => {
