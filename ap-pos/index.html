@@ -29,11 +29,16 @@
               <input type="text" id="m-cliente" list="client-list" required autocomplete="off" />
               <datalist id="client-list"></datalist>
             </div>
-            <label>Tipo:</label>
+            <label>Servicio:</label>
             <select id="m-tipo" required>
-              <option value="Pago">Pago</option>
-              <option value="Anticipo">Anticipo</option>
+              <option value="Microblading">Microblading</option>
+              <option value="Lashes">Lashes</option>
+              <option value="Nail Art">Nail Art</option>
             </select>
+            <label>Fecha de Cita:</label>
+            <input type="date" id="m-fecha-cita" />
+            <label>Hora de Cita:</label>
+            <input type="time" id="m-hora-cita" />
             <label>Monto (MXN):</label><input type="number" id="m-monto" step="0.01" min="0" required />
             <label>Método:</label>
             <select id="m-metodo">
@@ -64,8 +69,9 @@
               <tr>
                 <th>Folio</th>
                 <th>Fecha</th>
+                <th>Cita</th>
                 <th>Cliente</th>
-                <th>Tipo</th>
+                <th>Servicio</th>
                 <th>Monto</th>
                 <th>Acciones</th>
               </tr>

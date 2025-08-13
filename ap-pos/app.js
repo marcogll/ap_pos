@@ -31,11 +31,13 @@ const clientDatalist = document.getElementById('client-list');
 
 // --- LÓGICA DE NEGOCIO ---
 
-async function getNextFolio() {
-  const folio = `${settings.folioPrefix || ''}${String(settings.folioSeq).padStart(6, '0')}`;
-  settings.folioSeq += 1;
-  await save(KEY_SETTINGS, settings);
-  return folio;
+function generateFolio() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 async function addMovement(mov) {
@@ -57,10 +59,8 @@ async function saveClient(clientData) {
   let isUpdate = false;
 
   if (clientData) {
-    // Data is passed directly (e.g., from new movement creation)
     clientToSave = clientData;
   } else {
-    // Read from the client form
     isUpdate = !!document.getElementById('c-id').value;
     const id = isUpdate ? document.getElementById('c-id').value : crypto.randomUUID();
     clientToSave = {
@@ -80,7 +80,6 @@ async function saveClient(clientData) {
       clients[index] = clientToSave;
     }
   } else {
-    // Avoid duplicates if client was already added optimistically
     if (!clients.some(c => c.id === clientToSave.id)) {
         clients.push(clientToSave);
     }
@@ -89,7 +88,6 @@ async function saveClient(clientData) {
   renderClientsTable();
   updateClientDatalist();
 
-  // Only reset the form if we were using it
   if (!clientData) {
     document.getElementById('formClient').reset();
     document.getElementById('c-id').value = '';
@@ -106,12 +104,13 @@ async function deleteClient(id) {
 }
 
 function exportCSV() {
-  const headers = 'folio,fechaISO,cliente,tipo,monto,metodo,concepto,staff,notas';
+  const headers = 'folio,fechaISO,cliente,tipo,monto,metodo,concepto,staff,notas,fechaCita,horaCita';
   const rows = movements.map(m => {
     const client = clients.find(c => c.id === m.clienteId);
     return [
       m.folio, m.fechaISO, client ? client.nombre : 'N/A', m.tipo, m.monto,
-      m.metodo || '', m.concepto || '', m.staff || '', m.notas || ''
+      m.metodo || '', m.concepto || '', m.staff || '', m.notas || '',
+      m.fechaCita || '', m.horaCita || ''
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
   });
   
@@ -144,9 +143,11 @@ function renderTable() {
   movements.forEach(mov => {
     const client = clients.find(c => c.id === mov.clienteId);
     const tr = document.createElement('tr');
+    const fechaCita = mov.fechaCita ? new Date(mov.fechaCita + 'T00:00:00').toLocaleDateString('es-MX') : '';
     tr.innerHTML = `
       <td><a href="#" class="action-btn" data-id="${mov.id}" data-action="reprint">${mov.folio}</a></td>
       <td>${new Date(mov.fechaISO).toLocaleDateString('es-MX')}</td>
+      <td>${fechaCita} ${mov.horaCita || ''}</td>
       <td>${client ? client.nombre : 'Cliente Eliminado'}</td>
       <td>${mov.tipo}</td>
       <td>${Number(mov.monto).toFixed(2)}</td>
@@ -221,16 +222,16 @@ async function handleNewMovement(e) {
         cumpleaños: '',
         consentimiento: false
       };
-      await saveClient(newClient); // This now works correctly
+      await saveClient(newClient);
       client = newClient;
     } else {
-      return; // Do not create movement if client is not created
+      return;
     }
   }
 
   const newMovement = {
     id: crypto.randomUUID(),
-    folio: await getNextFolio(),
+    folio: generateFolio(),
     fechaISO: new Date().toISOString(),
     clienteId: client.id,
     tipo: document.getElementById('m-tipo').value,
@@ -239,13 +240,15 @@ async function handleNewMovement(e) {
     concepto: document.getElementById('m-concepto').value,
     staff: document.getElementById('m-staff').value,
     notas: document.getElementById('m-notas').value,
+    fechaCita: document.getElementById('m-fecha-cita').value,
+    horaCita: document.getElementById('m-hora-cita').value,
   };
 
   await addMovement(newMovement);
   const movementForTicket = { ...newMovement, cliente: client.nombre };
   renderTicketAndPrint(movementForTicket, settings);
   form.reset();
-  document.getElementById('m-cliente').focus(); // Poner el foco en el campo de cliente
+  document.getElementById('m-cliente').focus();
 }
 
 function handleTableClick(e) {
@@ -289,15 +292,13 @@ async function handleClientForm(e) {
 
 function handleTabChange(e) {
   const tabButton = e.target.closest('.tab-link');
-  if (!tabButton) return; // Si el clic no fue en un botón de pestaña, no hacer nada.
+  if (!tabButton) return;
 
   e.preventDefault();
 
-  // Quitar la clase 'active' de todas las pestañas y contenidos.
   document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-  // Activar la pestaña correcta y su contenido.
   const tabId = tabButton.dataset.tab;
   tabButton.classList.add('active');
   document.getElementById(tabId)?.classList.add('active');
@@ -324,7 +325,6 @@ function handleTestTicket() {
 function initializeApp() {
   const tabs = document.querySelector('.tabs');
   
-  // Conectar eventos
   formSettings?.addEventListener('submit', handleSaveSettings);
   formMove?.addEventListener('submit', handleNewMovement);
   tblMovesBody?.addEventListener('click', handleTableClick);
@@ -338,7 +338,6 @@ function initializeApp() {
     document.getElementById('c-id').value = '';
   });
 
-  // Cargar datos y renderizar
   Promise.all([
     load(KEY_SETTINGS, DEFAULT_SETTINGS),
     load(KEY_DATA, []),
@@ -355,5 +354,4 @@ function initializeApp() {
   });
 }
 
-// Esperar a que el DOM esté completamente cargado para iniciar la app
 document.addEventListener('DOMContentLoaded', initializeApp);

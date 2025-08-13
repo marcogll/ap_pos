@@ -52,6 +52,8 @@ db.serialize(() => {
         concepto TEXT,
         staff TEXT,
         notas TEXT,
+        fechaCita TEXT,
+        horaCita TEXT,
         FOREIGN KEY (clienteId) REFERENCES clients (id)
     )`);
 });
@@ -130,10 +132,10 @@ app.get('/api/movements', (req, res) => {
 
 app.post('/api/movements', (req, res) => {
     const { movement } = req.body;
-    const { id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas } = movement;
-    db.run(`INSERT INTO movements (id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas], function(err) {
+    const { id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita } = movement;
+    db.run(`INSERT INTO movements (id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, folio, fechaISO, clienteId, tipo, monto, metodo, concepto, staff, notas, fechaCita, horaCita], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
