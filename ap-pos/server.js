@@ -14,12 +14,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname)); // Servir archivos estáticos como CSS, JS, etc.
 
+// Cargar una clave secreta desde variables de entorno o usar una por defecto (solo para desarrollo)
+const SESSION_SECRET = process.env.SESSION_SECRET || 'your-very-secret-key-change-it';
+const IN_PROD = process.env.NODE_ENV === 'production';
+
 // Session Middleware
 app.use(session({
-  secret: 'your-very-secret-key-change-it', // Cambia esto por una clave secreta real
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // `secure: true` en producción con HTTPS
+  cookie: { secure: IN_PROD, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // `secure: true` en producción con HTTPS
 }));
 
 // --- DATABASE INITIALIZATION ---

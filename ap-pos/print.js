@@ -82,7 +82,7 @@ function templateTicket(mov, settings) {
  * @param {object} mov El objeto del movimiento.
  * @param {object} settings El objeto de configuración.
  */
-export function renderTicketAndPrint(mov, settings) {
+export async function renderTicketAndPrint(mov, settings) {
   const printArea = document.getElementById('printArea');
   if (!printArea) {
     console.error("El área de impresión #printArea no se encontró.");
@@ -98,25 +98,18 @@ export function renderTicketAndPrint(mov, settings) {
     const canvas = document.getElementById('qr-canvas');
     if (!canvas) {
       console.error("El canvas del QR #qr-canvas no se encontró. Se imprimirá sin QR.");
-      setTimeout(() => window.print(), 100); // Imprimir sin QR
+      window.print(); // Imprimir sin QR de inmediato
       return;
     }
 
     // 3. Generar el código QR
     const qrUrl = 'http://vanityexperience.mx/qr';
-    QRCode.toCanvas(canvas, qrUrl, { width: 140, margin: 1 }, function (error) {
-      if (error) {
-        console.error('Error al generar el código QR:', error);
-        // Ocultar el canvas si hay error y proceder a imprimir
-        canvas.style.display = 'none';
-      }
-      
-      // 4. Llamar a la impresión después de un breve timeout
-      // Esto asegura que el navegador haya tenido tiempo de renderizar el QR
-      setTimeout(() => {
-        window.print();
-      }, 150);
-    });
+    await QRCode.toCanvas(canvas, qrUrl, { width: 140, margin: 1 });
+
+    // 4. Llamar a la impresión.
+    // El `await` anterior asegura que el QR ya está renderizado.
+    // Un pequeño timeout puede seguir siendo útil para asegurar que el navegador "pinte" el canvas en la pantalla.
+    requestAnimationFrame(() => window.print());
 
   } catch (error) {
     console.error("Error al intentar imprimir:", error);

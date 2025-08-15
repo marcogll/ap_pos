@@ -162,8 +162,13 @@ async function saveClient(clientData) {
 
   await save('clients', { client: clientToSave });
 
-  // Volver a cargar los clientes desde el servidor para asegurar consistencia
-  clients = await load(KEY_CLIENTS, []);
+  // Optimización: en lugar de recargar, actualizamos el estado local.
+  if (isUpdate) {
+    const index = clients.findIndex(c => c.id === clientToSave.id);
+    if (index > -1) clients[index] = clientToSave;
+  } else {
+    clients.unshift(clientToSave); // Añadir al principio para que aparezca primero
+  }
   
   renderClientsTable();
   updateClientDatalist();
@@ -785,7 +790,7 @@ async function initializeApp() {
 
   tipoServicioSelect?.addEventListener('change', (e) => {
     const subtipoContainer = document.getElementById('m-subtipo-container');
-    const servicesWithSubtype = ['Microblading', 'Lashes', 'Nail Art'];
+    const servicesWithSubtype = ['Microblading', 'Lashes', 'Nail Art', 'Lash Lifting'];
     subtipoContainer.classList.toggle('hidden', !servicesWithSubtype.includes(e.target.value));
   });
 
@@ -825,4 +830,3 @@ async function initializeApp() {
 
 
 document.addEventListener('DOMContentLoaded', initializeApp);
-
