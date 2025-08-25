@@ -547,9 +547,6 @@ async function deleteProduct(id) {
             if (response.ok) {
                 products = products.filter(p => p.id !== id);
                 renderProductTables();
-            } else {
-                const error = await response.json();
-                alert(`Error: ${error.error}`);
             }
         } catch (error) {
             alert('Error de conexión al eliminar el producto.');
@@ -999,11 +996,13 @@ function setupUIForRole(role) {
     const settingsTab = document.querySelector('[data-tab="settings"]');
     const userManagementSection = document.getElementById('user-management-section');
     const staffInput = document.getElementById('m-staff');
+    const dbInfoIcon = document.getElementById('db-info-icon');
 
     if (role === 'admin') {
         if (dashboardTab) dashboardTab.style.display = 'block';
         if (settingsTab) settingsTab.style.display = 'block';
         if (userManagementSection) userManagementSection.style.display = 'block';
+        if (dbInfoIcon) dbInfoIcon.style.display = 'inline-block';
         
         fetch('/api/users')
             .then(res => {
@@ -1019,6 +1018,7 @@ function setupUIForRole(role) {
         if (dashboardTab) dashboardTab.style.display = 'none';
         if (settingsTab) settingsTab.style.display = 'none';
         if (userManagementSection) userManagementSection.style.display = 'none';
+        if (dbInfoIcon) dbInfoIcon.style.display = 'none';
     }
     
     if (staffInput) {
@@ -1070,6 +1070,7 @@ async function initializeApp() {
   const btnCancelEditUser = document.getElementById('btnCancelEditUser');
   const tipoServicioSelect = document.getElementById('m-tipo');
   const clientSubTabs = document.querySelector('#tab-clients .sub-tabs');
+  const dbInfoIcon = document.getElementById('db-info-icon');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
   formCredentials?.addEventListener('submit', handleSaveCredentials);
@@ -1089,6 +1090,9 @@ async function initializeApp() {
   if (currentUser.role === 'admin') {
       formAddUser?.addEventListener('submit', handleAddOrUpdateUser);
       tblUsersBody?.addEventListener('click', handleTableClick);
+      dbInfoIcon?.addEventListener('click', () => {
+        document.getElementById('db-instructions').classList.toggle('hidden');
+      });
   }
   
   btnLogout?.addEventListener('click', async () => {

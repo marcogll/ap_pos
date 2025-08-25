@@ -281,6 +281,7 @@ button.action-btn {
 .header-logo {
   max-width: 20%;
   height: auto;
+  padding-right: 50px;
 }
 
 .tabs {
@@ -527,6 +528,17 @@ table tbody tr:hover {
 }
 .data-location-info strong {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.info-icon {
+  font-size: 18px;
+  color: #6c757d;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+.info-icon:hover {
+  color: #343a40;
 }
 
 .sub-section {

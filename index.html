@@ -20,7 +20,7 @@
     <header class="main-header">
       <!-- Logo del negocio en lugar de texto -->
       <img src="src/logo.png" alt="Ale Ponce" class="header-logo">
-            <nav class="tabs">
+      <nav class="tabs">
         <button type="button" class="tab-link" data-tab="tab-dashboard">
           <span class="material-icons-outlined">dashboard</span><span>Dashboard</span>
         </button>
@@ -372,11 +372,20 @@
           </div>
         </form>
       </div>
-      <div class="section">
-        <h2>Ubicación de los Datos</h2>
-        <p class="data-location-info">
-          Toda la información de tu negocio (clientes, recibos y configuración) se guarda de forma segura en el archivo <strong>ap-pos.db</strong>, ubicado en la misma carpeta que la aplicación. Para hacer un respaldo, simplemente copia este archivo.
-        </p>
+      <div class="section" id="db-location-section">
+        <h2>Ubicación y Exportación de Datos
+          <span class="material-icons-outlined info-icon" id="db-info-icon" style="display: none;">help_outline</span>
+        </h2>
+        <div id="db-instructions" class="data-location-info hidden">
+          <p>La base de datos (<code>ap-pos.db</code>) se encuentra dentro del contenedor de Docker. Para acceder o hacer un respaldo manual:</p>
+          <ol>
+            <li>Abre una terminal o línea de comandos.</li>
+            <li>Ejecuta <code>docker ps</code> para encontrar el nombre o ID de tu contenedor (usualmente 'ap-pos').</li>
+            <li>Entra al contenedor con: <code>docker exec -it ap-pos /bin/sh</code> (reemplaza 'ap-pos' si es necesario).</li>
+            <li>Una vez dentro, la base de datos está en <code>/app/ap-pos.db</code>.</li>
+            <li>Para copiarla a tu máquina local (desde fuera del contenedor), usa:<br><code>docker cp ap-pos:/app/ap-pos.db ./backup_BDD.db</code></li>
+          </ol>
+        </div>
       </div>
       <div class="section" id="credentials-section">
         <h2>Mis Credenciales</h2>
