@@ -2,6 +2,18 @@ import { load, save, remove, KEY_CLIENTS } from './storage.js';
 
 let clients = [];
 
+// --- UTILITIES ---
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+    const day = String(adjustedDate.getDate()).padStart(2, '0');
+    const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+    const year = adjustedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
 // --- DOM ELEMENTS ---
 const formClient = document.getElementById('formClient');
 const tblClientsBody = document.getElementById('tblClients')?.querySelector('tbody');
@@ -64,11 +76,10 @@ async function deleteClient(id) {
 function exportClientHistoryCSV(client, history) {
   const headers = 'Folio,Fecha,Servicio,Monto';
   const rows = history.map(mov => {
-    const fecha = new Date(mov.fechaISO).toLocaleDateString('es-MX');
     const servicio = mov.subtipo ? `${mov.tipo} (${mov.subtipo})` : mov.tipo;
     return [
       mov.folio,
-      fecha,
+      formatDate(mov.fechaISO),
       `"${servicio}"`, // Corrected: escaped inner quotes for CSV compatibility
       Number(mov.monto).toFixed(2)
     ].join(',');
@@ -101,19 +112,18 @@ async function toggleClientHistory(row, client) {
     historyRow.id = historyRowId;
     historyRow.className = 'client-history-row';
     
-    let historyHtml = '
+    let historyHtml = `
       <div class="client-history-header">
         <h4>Historial de Servicios</h4>
-        <button class="action-btn" id="btn-export-history-' + client˚.id + '">Exportar CSV</button>
+        <button class="action-btn" id="btn-export-history-${client.id}">Exportar CSV</button>
       </div>
-    ';
+    `;
 
     if (history.length > 0) {
       historyHtml += '<table><thead><tr><th>Folio</th><th>Fecha</th><th>Servicio</th><th>Monto</th></tr></thead><tbody>';
       history.forEach(mov => {
-        const fecha = new Date(mov.fechaISO).toLocaleDateString('es-MX');
         const servicio = mov.subtipo ? `${mov.tipo} (${mov.subtipo})` : mov.tipo;
-        historyHtml += `<tr><td>${mov.folio}</td><td>${fecha}</td><td>${servicio}</td><td>${Number(mov.monto).toFixed(2)}</td></tr>`;
+        historyHtml += `<tr><td>${mov.folio}</td><td>${formatDate(mov.fechaISO)}</td><td>${servicio}</td><td>${Number(mov.monto).toFixed(2)}</td></tr>`;
       });
       historyHtml += '</tbody></table>';
     } else {
@@ -145,16 +155,16 @@ function renderClientsTable(clientList = clients) {
   clientList.forEach(c => {
     const tr = document.createElement('tr');
     tr.dataset.id = c.id;
-    tr.innerHTML = '
-      <td>' + c.nombre + '</td>
-      <td>' + (c.telefono || '') + '</td>
-      <td>' + (c.esOncologico ? 'Sí' : 'No') + '</td>
+    tr.innerHTML = `
+      <td>${c.nombre}</td>
+      <td>${c.telefono || ''}</td>
+      <td>${c.esOncologico ? 'Sí' : 'No'}</td>
       <td>
-        <button class="action-btn" data-id="' + c.id + '" data-action="view-history">Historial</button>
-        <button class="action-btn" data-id="' + c.id + '" data-action="edit-client">Editar</button>
-        <button class="action-btn" data-id="' + c.id + '" data-action="delete-client">Eliminar</button>
+        <button class="action-btn" data-id="${c.id}" data-action="view-history">Historial</button>
+        <button class="action-btn" data-id="${c.id}" data-action="edit-client">Editar</button>
+        <button class="action-btn" data-id="${c.id}" data-action="delete-client">Eliminar</button>
       </td>
-    ';
+    `;
     tblClientsBody.appendChild(tr);
   });
 }
@@ -209,7 +219,6 @@ async function handleClientForm(e) {
 // --- INICIALIZACIÓN ---
 
 async function initializeClientsPage() {
-  // 1. Verificar autenticación
   try {
     const response = await fetch('/api/check-auth');
     const auth = await response.json();
@@ -223,11 +232,9 @@ async function initializeClientsPage() {
     return;
   }
 
-  // 2. Cargar clientes
   clients = await load(KEY_CLIENTS, []);
   renderClientsTable();
 
-  // 3. Añadir manejadores de eventos
   formClient?.addEventListener('submit', handleClientForm);
   tblClientsBody?.addEventListener('click', handleTableClick);
 

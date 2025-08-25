@@ -4,13 +4,26 @@
  * @returns {string} El string escapado.
  */
 function esc(str) {
-  return String(str || '').replace(/[&<>"']/g, c => ({
+  return String(str || '').replace(/[&<>"'/]/g, c => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
-    "\"": "&quot;",
+    '"': '&quot;',
     "'": "&#39;"
   }[c]));
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+    const day = String(adjustedDate.getDate()).padStart(2, '0');
+    const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+    const year = adjustedDate.getFullYear();
+    const hours = String(adjustedDate.getHours()).padStart(2, '0');
+    const minutes = String(adjustedDate.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
 /**
@@ -20,8 +33,7 @@ function esc(str) {
  * @returns {string} El HTML del ticket.
  */
 function templateTicket(mov, settings) {
-  const dt = new Date(mov.fechaISO || Date.now());
-  const fechaLocal = dt.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+  const fechaLocal = formatDate(mov.fechaISO || Date.now());
   const montoFormateado = Number(mov.monto).toFixed(2);
   const tipoServicio = mov.subtipo === 'Retoque' ? `Retoque de ${mov.tipo}` : mov.tipo;
 
@@ -50,7 +62,6 @@ function templateTicket(mov, settings) {
   lines.push('<div class="t-divider"></div>');
   lines.push(`<div class="t-row t-bold"><span>Total</span><span>${montoFormateado}</span></div>`);
   
-  // Sección de consentimientos
   if (mov.client && (mov.client.esOncologico || mov.client.consentimiento)) {
     lines.push('<div class="t-divider"></div>');
     if (mov.client.esOncologico) {
@@ -66,7 +77,6 @@ function templateTicket(mov, settings) {
 
   if (settings.leyenda) lines.push(`<div class="t-footer t-center t-small">${esc(settings.leyenda)}</div>`);
   
-  // Sección de Encuesta con QR
   lines.push('<div class="t-qr-section">');
   lines.push('<div class="t-small t-bold">¡Tu opinión es muy importante!</div>');
   lines.push('<div class="t-small">Escanea el código QR para darnos tu feedback.</div>');
@@ -91,24 +101,18 @@ export async function renderTicketAndPrint(mov, settings) {
   }
 
   try {
-    // 1. Renderizar la estructura HTML del ticket
     printArea.innerHTML = templateTicket(mov, settings);
 
-    // 2. Encontrar el elemento canvas para el QR
     const canvas = document.getElementById('qr-canvas');
     if (!canvas) {
       console.error("El canvas del QR #qr-canvas no se encontró. Se imprimirá sin QR.");
-      window.print(); // Imprimir sin QR de inmediato
+      window.print();
       return;
     }
 
-    // 3. Generar el código QR
     const qrUrl = 'http://vanityexperience.mx/qr';
     await QRCode.toCanvas(canvas, qrUrl, { width: 140, margin: 1 });
 
-    // 4. Llamar a la impresión.
-    // El `await` anterior asegura que el QR ya está renderizado.
-    // Un pequeño timeout puede seguir siendo útil para asegurar que el navegador "pinte" el canvas en la pantalla.
     requestAnimationFrame(() => window.print());
 
   } catch (error) {
@@ -116,3 +120,31 @@ export async function renderTicketAndPrint(mov, settings) {
     alert(`Ocurrió un error al preparar la impresión: ${error.message}. Revise la consola para más detalles.`);
   }
 }
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnTestTicket = document.getElementById('btnTestTicket');
+  if (btnTestTicket) {
+    btnTestTicket.addEventListener('click', () => {
+      const demoMovement = {
+        id: 'demo',
+        folio: 'DEMO-000001',
+        fechaISO: new Date().toISOString(),
+        client: {
+          nombre: 'Cliente de Prueba',
+          esOncologico: true,
+          nombreMedico: 'Dr. Juan Pérez',
+          telefonoMedico: '5512345678',
+          cedulaMedico: '1234567'
+        },
+        tipo: 'Pago',
+        monto: 123.45,
+        metodo: 'Efectivo',
+        concepto: 'Producto de demostración',
+        staff: 'Admin',
+        notas: 'Esta es una impresión de prueba.'
+      };
+      renderTicketAndPrint(demoMovement, window.settings || {});
+    });
+  }
+});
