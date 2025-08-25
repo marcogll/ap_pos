@@ -1218,7 +1218,7 @@ async function initializeApp() {
     }
 
     console.log('Activating client sub-tab...');
-    activateClientSubTab('sub-tab-consult');
+    activateClientSubTab('sub-tab-register');
     console.log('Clearing client record...');
     clearClientRecord();
     console.log('Populating footer...');

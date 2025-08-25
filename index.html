@@ -372,21 +372,6 @@
           </div>
         </form>
       </div>
-      <div class="section" id="db-location-section">
-        <h2>Ubicación y Exportación de Datos
-          <span class="material-icons-outlined info-icon" id="db-info-icon" style="display: none;">help_outline</span>
-        </h2>
-        <div id="db-instructions" class="data-location-info hidden">
-          <p>La base de datos (<code>ap-pos.db</code>) se encuentra dentro del contenedor de Docker. Para acceder o hacer un respaldo manual:</p>
-          <ol>
-            <li>Abre una terminal o línea de comandos.</li>
-            <li>Ejecuta <code>docker ps</code> para encontrar el nombre o ID de tu contenedor (usualmente 'ap-pos').</li>
-            <li>Entra al contenedor con: <code>docker exec -it ap-pos /bin/sh</code> (reemplaza 'ap-pos' si es necesario).</li>
-            <li>Una vez dentro, la base de datos está en <code>/app/ap-pos.db</code>.</li>
-            <li>Para copiarla a tu máquina local (desde fuera del contenedor), usa:<br><code>docker cp ap-pos:/app/ap-pos.db ./backup_BDD.db</code></li>
-          </ol>
-        </div>
-      </div>
       <div class="section" id="credentials-section">
         <h2>Mis Credenciales</h2>
         <form id="formCredentials">
@@ -448,6 +433,16 @@
           </div>
         </div>
       </div>
+      <div class="section" id="db-location-section">
+        <h2>Ubicación y Exportación de Datos
+          <span class="material-icons-outlined info-icon" id="db-info-icon" style="display: none;">help_outline</span>
+        </h2>
+        <div id="db-instructions" class="data-location-info hidden">
+          <p>Toda la información de tu negocio (clientes, recibos, configuración) se guarda localmente. Para respaldar tus datos, simplemente copia el archivo correspondiente.</p>
+          <p>Para usuarios avanzados, la base de datos (<code>ap-pos.db</code>) se encuentra dentro del contenedor de la aplicación. Puedes acceder a ella usando los comandos estándar de Docker para copiar el archivo.</p>
+        </div>
+      </div>
+    </div>
     </div>
   </main>
 

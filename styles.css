@@ -154,39 +154,6 @@ button:hover {
   border-radius: 5px;
 }
 
-#tblMoves, #tblClients, #tblUsers {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0;
-}
-
-#tblMoves th, #tblMoves td,
-#tblClients th, #tblClients td,
-#tblUsers th, #tblUsers td {
-  border-bottom: 1px solid #dee2e6;
-  padding: 12px 15px;
-  text-align: left;
-  white-space: nowrap;
-}
-#tblMoves td:last-child, #tblMoves th:last-child,
-#tblClients td:last-child, #tblClients th:last-child,
-#tblUsers td:last-child, #tblUsers th:last-child {
-  text-align: center;
-}
-
-#tblMoves th, #tblClients th, #tblUsers th {
-  background-color: #f8f9fa;
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 500;
-  border-bottom-width: 2px;
-}
-
-#tblMoves tbody tr:last-child td,
-#tblClients tbody tr:last-child td,
-#tblUsers tbody tr:last-child td {
-  border-bottom: none;
-}
-
 .action-btn {
   background: none;
   border: none;
