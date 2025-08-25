@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Inicial - AP POS</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4f4f9;
+      }
+      .login-container {
+        padding: 2rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 400px;
+      }
+      .login-container h1 {
+        text-align: center;
+        margin-bottom: 1rem;
+        color: #333;
+      }
+      .login-container p {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        color: #666;
+      }
+      .form-grid {
+        display: grid;
+        gap: 1rem;
+      }
+      label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 14px;
+        text-align: left;
+      }
+      #error-message {
+        color: #dc3545;
+        text-align: center;
+        margin-top: 1rem;
+        font-weight: 600;
+      }
+    </style>
+</head>
+<body>
+    <main class="login-container">
+        <h1>Configuración Inicial</h1>
+        <p>Este es el primer inicio. Por favor, crea tu cuenta de administrador.</p>
+        <form id="setupForm">
+            <div class="form-grid">
+                <label for="fullName">Nombre Completo:</label>
+                <input type="text" id="fullName" name="fullName" required placeholder="Ej: Juanita Lopez">
+                
+                <label for="username">Nombre de Usuario:</label>
+                <input type="text" id="username" name="username" value="admin" readonly required>
+                
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" name="password" required>
+                
+                <label for="confirmPassword">Confirmar Contraseña:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+            </div>
+            <div class="form-actions" style="margin-top: 1.5rem; justify-content: center;">
+                <button type="submit">Crear Administrador</button>
+            </div>
+        </form>
+        <p id="error-message"></p>
+    </main>
+    <script src="setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  ap-pos:
+    image: marcogll/ap-pos:latest
+    container_name: ap-pos
+    restart: unless-stopped
+    ports:
+      - "3111:3111"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ap_pos_data:/app/data
+
+volumes:
+  ap_pos_data:
+

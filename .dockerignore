@@ -1,0 +1,4 @@
+# Evitar que los módulos locales y los archivos de git se copien a la imagen
+node_modules
+.git
+.gitignore
