@@ -1,95 +1,39 @@
-# AP POS - Sistema de Punto de Venta
+# Sistema de Punto de Venta de Master · Ale Ponce
 
-Este proyecto es un sistema de Punto de Venta (POS) basado en la web, diseñado para la gestión eficiente de ventas, clientes y productos.
+Este es un sistema de Punto de Venta (POS) simple y eficiente, diseñado para gestionar las operaciones de un negocio de belleza. La aplicación permite administrar clientes, ventas, productos, y citas de forma centralizada.
 
 ## Características Principales
 
-*   **Autenticación Segura:** Sistema de inicio de sesión para usuarios con roles (administrador, usuario).
-*   **Configuración Inicial:** Proceso de configuración guiado para el primer usuario administrador.
-*   **Gestión de Clientes:** Creación, edición y eliminación de perfiles de clientes.
-*   **Historial de Clientes:** Seguimiento detallado de los servicios y pagos de cada cliente.
-*   **Registro de Movimientos:** Registra ventas, citas y otros movimientos financieros.
-*   **Gestión de Productos y Servicios:** Define los productos y servicios que ofrece el negocio.
-*   **Panel de Control (Dashboard):** Visualización de métricas clave como ingresos totales, desglose por servicio y método de pago (solo para administradores).
-*   **Gestión de Usuarios:** Creación y administración de cuentas de usuario (solo para administradores).
-*   **Contenerización:** Listo para desplegarse fácilmente con Docker y Docker Compose.
+- **Dashboard (Solo Admin):** Visualización rápida de estadísticas clave como ingresos totales, número de servicios y gráficos de rendimiento.
+- **Gestión de Ventas:** Creación de nuevos movimientos (ventas), generación de recibos para impresión y exportación de historial de ventas a formato CSV.
+- **Gestión de Clientes:** Registro y consulta de clientes, con la posibilidad de ver su expediente completo, incluyendo historial de servicios y cursos.
+- **Gestión de Productos:** Permite añadir, editar y eliminar tanto servicios como cursos ofrecidos por el negocio.
+- **Configuración (Solo Admin):**
+  - Ajuste de los datos del negocio para los recibos.
+  - Gestión de credenciales de usuario.
+  - Administración de múltiples usuarios (crear, editar, eliminar).
+- **Autenticación:** Sistema de inicio de sesión seguro para proteger el acceso a la información.
+- **Roles de Usuario:** Perfiles de Administrador (acceso total) y Usuario (acceso limitado a ventas y clientes).
 
-## Tecnologías Utilizadas
+## Despliegue con Docker
 
-*   **Backend:** Node.js, Express.js
-*   **Frontend:** HTML, CSS, JavaScript (sin frameworks)
-*   **Base de Datos:** SQLite
-*   **Autenticación:** express-session, bcryptjs
-*   **Contenerización:** Docker, Docker Compose
-
-## Cómo Empezar
-
-Sigue estas instrucciones para poner en marcha el proyecto en tu máquina local.
+El sistema está diseñado para ser desplegado fácilmente utilizando Docker y Docker Compose, asegurando un entorno consistente y aislado.
 
 ### Prerrequisitos
 
-*   Node.js (v18 o superior)
-*   npm (generalmente incluido con Node.js)
-*   Docker y Docker Compose (Opcional, para despliegue en contenedores)
+- Tener instalado [Docker](https://docs.docker.com/get-docker/)
+- Tener instalado [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Instalación y Ejecución Local
+### Pasos para el despliegue
 
-1.  **Clona el repositorio:**
+1.  Clona o descarga este repositorio en tu máquina local.
+2.  Abre una terminal y navega hasta el directorio raíz del proyecto.
+3.  Ejecuta el siguiente comando para construir y levantar el contenedor de la aplicación en segundo plano:
+
     ```bash
-    git clone <URL-DEL-REPOSITORIO>
-    cd ap_pos
+    docker-compose up -d --build
     ```
 
-2.  **Instala las dependencias del proyecto:**
-    ```bash
-    npm install
-    ```
+4.  Una vez que el comando termine, la aplicación estará disponible en tu navegador en la dirección `http://localhost:3000`.
 
-3.  **Inicia la aplicación:**
-    ```bash
-    npm start
-    ```
-    El servidor se iniciará en `http://localhost:3111`. La primera vez que accedas, serás redirigido a `/setup.html` para crear el usuario administrador.
-
-### Despliegue con Docker (Recomendado)
-
-1.  **Construye y levanta los contenedores:**
-    ```bash
-    docker-compose up --build -d
-    ```
-    La aplicación estará disponible en `http://localhost:3111`. El `-d` ejecuta los contenedores en segundo plano.
-
-2.  **Para detener los contenedores:**
-    ```bash
-    docker-compose down
-    ```
-
-## Estructura del Proyecto
-
-```
-/
-├── app.js             # Lógica principal del frontend
-├── server.js          # Servidor backend (Express)
-├── clients.js         # Lógica para la gestión de clientes
-├── print.js           # Funcionalidad para imprimir recibos
-├── setup.js           # Lógica para la página de configuración inicial
-├── storage.js         # Utilidades para la base de datos
-├── index.html         # Página principal de la aplicación
-├── login.html         # Página de inicio de sesión
-├── setup.html         # Página de configuración inicial
-├── styles.css         # Estilos CSS
-├── Dockerfile         # Define la imagen de Docker para la aplicación
-├── docker-compose.yml # Orquesta el despliegue con Docker
-├── package.json       # Dependencias y scripts del proyecto
-└── src/               # Activos estáticos (imágenes, logos)
-```
-
-## Notas de Desarrollo (UI/UX)
-
-*   **Logo Principal:** El logo `src/logo.png` ha sido redimensionado correctamente.
-*   **Barra de Navegación:** Se ha ajustado para que las pestañas inactivas muestren solo el ícono, mientras que la activa muestra ícono y texto.
-*   **Logo del Footer:** Hay un problema pendiente que impide que `src/logo_dev.png` se muestre correctamente.
-
-## Licencia
-
-Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.
+La base de datos y toda la información se almacenarán localmente dentro de los volúmenes de Docker gestionados por `docker-compose`.
