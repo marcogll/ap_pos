@@ -3,6 +3,7 @@
 
 # Local Database
 ap-pos.db
+dev-tasks.md
 
 # Environment variables
 .env
