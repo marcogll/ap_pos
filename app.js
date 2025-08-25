@@ -14,7 +14,18 @@ function escapeHTML(str) {
         .replace(/'/g, '&#039;');
 }
 
-const APP_VERSION = '1.0.0';
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+    const day = String(adjustedDate.getDate()).padStart(2, '0');
+    const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+    const year = adjustedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+const APP_VERSION = '1.3.0';
 
 // --- ESTADO Y DATOS ---
 const DEFAULT_SETTINGS = {
@@ -62,7 +73,6 @@ let isDashboardLoading = false;
 // --- LÓGICA DE NEGOCIO ---
 
 async function loadDashboardData() {
-  // Guardia para prevenir ejecuciones múltiples y re-entradas.
   if (currentUser.role !== 'admin' || isDashboardLoading) {
     return;
   }
@@ -76,45 +86,39 @@ async function loadDashboardData() {
       } else {
         throw new Error('Falló la carga de datos del dashboard');
       }
-      return; // Salir aquí después de manejar el error
+      return;
     }
     const data = await response.json();
 
-    // Antes de actualizar, verificar que el dashboard sigue activo.
     const dashboardTab = document.getElementById('tab-dashboard');
     if (!dashboardTab.classList.contains('active')) {
       return;
     }
 
-    // Actualizar tarjetas de estadísticas
     document.getElementById('stat-total-income').textContent = `${Number(data.totalIncome || 0).toFixed(2)}`;
     document.getElementById('stat-total-movements').textContent = data.totalMovements || 0;
 
-    // Actualizar datos del gráfico de ingresos
     if (incomeChart) {
       incomeChart.data.labels = data.incomeByService.map(item => item.tipo);
       incomeChart.data.datasets[0].data = data.incomeByService.map(item => item.total);
       incomeChart.update('none');
     }
     
-    // Actualizar datos del gráfico de método de pago
     if (paymentMethodChart) {
       paymentMethodChart.data.labels = data.incomeByPaymentMethod.map(item => item.metodo);
       paymentMethodChart.data.datasets[0].data = data.incomeByPaymentMethod.map(item => item.total);
       paymentMethodChart.update('none');
     }
 
-    // Renderizar próximas citas
     if (appointmentsList) {
       appointmentsList.innerHTML = '';
       if (data.upcomingAppointments.length > 0) {
         data.upcomingAppointments.forEach(appt => {
           const item = document.createElement('div');
           item.className = 'appointment-item';
-          const fechaCita = new Date(appt.fechaCita + 'T00:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' });
           item.innerHTML = `
             <a href="#" data-id="${appt.id}" data-action="reprint">${appt.clienteNombre}</a>
-            <span class="date">${fechaCita} - ${appt.horaCita}</span>
+            <span class="date">${formatDate(appt.fechaCita)} - ${appt.horaCita}</span>
           `;
           appointmentsList.appendChild(item);
         });
@@ -126,7 +130,6 @@ async function loadDashboardData() {
   } catch (error) {
     console.error('Error al cargar el dashboard:', error);
   } finally {
-    // Asegurar que el bloqueo se libere sin importar el resultado.
     isDashboardLoading = false;
   }
 }
@@ -182,12 +185,11 @@ async function saveClient(clientData) {
 
   await save('clients', { client: clientToSave });
 
-  // Optimización: en lugar de recargar, actualizamos el estado local.
   if (isUpdate) {
     const index = clients.findIndex(c => c.id === clientToSave.id);
     if (index > -1) clients[index] = clientToSave;
   } else {
-    clients.unshift(clientToSave); // Añadir al principio para que aparezca primero
+    clients.unshift(clientToSave);
   }
   
   renderClientsTable();
@@ -251,7 +253,6 @@ function renderTable() {
     const client = clients.find(c => c.id === mov.clienteId);
     const tr = tblMovesBody.insertRow();
     
-    const fechaCita = mov.fechaCita ? new Date(mov.fechaCita + 'T00:00:00').toLocaleDateString('es-MX') : '';
     const tipoServicio = mov.subtipo ? `${escapeHTML(mov.tipo)} (${escapeHTML(mov.subtipo)})` : escapeHTML(mov.tipo);
 
     const folioCell = tr.insertCell();
@@ -263,8 +264,8 @@ function renderTable() {
     folioLink.textContent = mov.folio;
     folioCell.appendChild(folioLink);
 
-    tr.insertCell().textContent = new Date(mov.fechaISO).toLocaleDateString('es-MX');
-    tr.insertCell().textContent = `${fechaCita} ${mov.horaCita || ''}`;
+    tr.insertCell().textContent = formatDate(mov.fechaISO);
+    tr.insertCell().textContent = `${formatDate(mov.fechaCita)} ${mov.horaCita || ''}`.trim();
     tr.insertCell().textContent = client ? escapeHTML(client.nombre) : 'Cliente Eliminado';
     tr.insertCell().textContent = tipoServicio;
     tr.insertCell().textContent = Number(mov.monto).toFixed(2);
@@ -416,7 +417,7 @@ async function handleSaveCredentials(e) {
 
         if (response.ok) {
             alert('Credenciales actualizadas.');
-            currentUser.name = name; // Actualizar el nombre en el estado local
+            currentUser.name = name;
             currentUser.username = username;
             document.getElementById('s-password').value = '';
         } else {
@@ -680,7 +681,7 @@ async function handleNewMovement(e) {
     monto: Number(monto.toFixed(2)),
     metodo: document.getElementById('m-metodo').value,
     concepto: document.getElementById('m-articulo').value,
-    staff: currentUser.name, // Usar el nombre del usuario actual
+    staff: currentUser.name,
     notas: document.getElementById('m-notas').value,
     fechaCita: document.getElementById('m-fecha-cita').value,
     horaCita: document.getElementById('m-hora-cita').value,
@@ -696,12 +697,11 @@ async function handleNewMovement(e) {
 function exportClientHistoryCSV(client, history) {
   const headers = 'Folio,Fecha,Servicio,Monto';
   const rows = history.map(mov => {
-    const fecha = new Date(mov.fechaISO).toLocaleDateString('es-MX');
     const servicio = mov.subtipo ? `${mov.tipo} (${mov.subtipo})` : mov.tipo;
     return [
       mov.folio,
-      fecha,
-      `"${servicio}"`,
+      formatDate(mov.fechaISO),
+      `"${servicio}"`, 
       Number(mov.monto).toFixed(2)
     ].join(',');
   });
@@ -732,11 +732,10 @@ async function showClientRecord(clientId) {
     const clientHistoryTableBody = document.getElementById('client-history-table').querySelector('tbody');
     const clientCoursesContainer = document.getElementById('client-courses-history-container');
 
-    // Sanitize client details before rendering
     clientDetails.innerHTML = `
         <p><strong>Nombre:</strong> ${escapeHTML(client.nombre)}</p>
         <p><strong>Teléfono:</strong> ${escapeHTML(client.telefono || 'N/A')}</p>
-        <p><strong>Cumpleaños:</strong> ${escapeHTML(client.cumpleaños ? new Date(client.cumpleaños + 'T00:00:00').toLocaleDateString('es-MX') : 'N/A')}</p>
+        <p><strong>Cumpleaños:</strong> ${escapeHTML(formatDate(client.cumpleaños) || 'N/A')}</p>
         <p><strong>Género:</strong> ${escapeHTML(client.genero || 'N/A')}</p>
         <p><strong>Oncológico:</strong> ${client.esOncologico ? 'Sí' : 'No'}</p>
     `;
@@ -754,10 +753,9 @@ async function showClientRecord(clientId) {
         if (history.length > 0) {
             history.forEach(mov => {
                 const tr = clientHistoryTableBody.insertRow();
-                const fecha = new Date(mov.fechaISO).toLocaleDateString('es-MX');
                 const servicio = mov.subtipo ? `${escapeHTML(mov.tipo)} (${escapeHTML(mov.subtipo)})` : escapeHTML(mov.tipo);
                 tr.insertCell().textContent = mov.folio;
-                tr.insertCell().textContent = fecha;
+                tr.insertCell().textContent = formatDate(mov.fechaISO);
                 tr.insertCell().textContent = servicio;
                 tr.insertCell().textContent = Number(mov.monto).toFixed(2);
             });
@@ -784,7 +782,7 @@ async function showClientRecord(clientId) {
                     ${courses.map(course => `
                         <tr>
                             <td>${escapeHTML(course.course_name)}</td>
-                            <td>${escapeHTML(course.fecha_curso)}</td>
+                            <td>${escapeHTML(formatDate(course.fecha_curso))}</td>
                             <td>${escapeHTML(course.score_general)}</td>
                             <td>${course.completo_presencial ? 'Sí' : 'No'}</td>
                             <td>${course.completo_online ? 'Sí' : 'No'}</td>
@@ -876,18 +874,15 @@ function handleTableClick(e) {
 async function handleClientForm(e) {
   e.preventDefault();
   await saveClient();
-  // Después de guardar, cambiar a la pestaña de consulta
   activateClientSubTab('sub-tab-consult');
 }
 
 function activateClientSubTab(subTabId) {
   if (!subTabId) return;
 
-  // Desactivar todas las sub-pestañas y contenidos de clientes
   document.querySelectorAll('#tab-clients .sub-tab-link').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('#tab-clients .sub-tab-content').forEach(content => content.classList.remove('active'));
 
-  // Activar la sub-pestaña y el contenido correctos
   const tabButton = document.querySelector(`[data-subtab="${subTabId}"]`);
   const tabContent = document.getElementById(subTabId);
 
@@ -910,11 +905,9 @@ function handleClientTabChange(e) {
 function activateTab(tabId) {
   if (!tabId) return;
 
-  // Desactivar todas las pestañas y contenidos
   document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-  // Activar la pestaña y el contenido correctos
   const tabButton = document.querySelector(`[data-tab="${tabId}"]`);
   const tabContent = document.getElementById(tabId);
 
@@ -925,9 +918,7 @@ function activateTab(tabId) {
     tabContent.classList.add('active');
   }
 
-  // Cargar datos dinámicos si es la pestaña del dashboard
   if (tabId === 'tab-dashboard' && currentUser.role === 'admin') {
-    // Si es la primera vez que se visita la pestaña, inicializar el gráfico
     if (!incomeChart) {
       const ctx = document.getElementById('incomeChart').getContext('2d');
       incomeChart = new Chart(ctx, {
@@ -966,7 +957,6 @@ function activateTab(tabId) {
         }
       });
     }
-    // Cargar (o recargar) los datos del dashboard
     loadDashboardData();
   }
 }
@@ -975,13 +965,11 @@ function handleTabChange(e) {
   const tabButton = e.target.closest('.tab-link');
   if (!tabButton) return;
 
-  // Solo prevenir el comportamiento por defecto si es un botón para cambiar de pestaña
   if (tabButton.dataset.tab) {
     e.preventDefault();
     const tabId = tabButton.dataset.tab;
     activateTab(tabId);
   }
-  // Si no tiene data-tab (es un enlace normal como el de Clientes), no hacer nada y permitir la navegación.
 }
 
 function handleTestTicket() {
@@ -1043,7 +1031,7 @@ function populateFooter() {
     const versionElement = document.getElementById('footer-version');
 
     if (dateElement) {
-        dateElement.textContent = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+        dateElement.textContent = formatDate(new Date().toISOString());
     }
     if (versionElement) {
         versionElement.textContent = `Versión ${APP_VERSION}`;
@@ -1054,17 +1042,14 @@ function populateFooter() {
 // --- INICIALIZACIÓN ---
 
 async function initializeApp() {
-  // 1. Verificar autenticación y obtener datos del usuario.
   let userResponse;
   try {
     userResponse = await fetch('/api/user');
     if (!userResponse.ok) {
-      // Si la respuesta no es 2xx, el usuario no está autenticado o hay un error.
       window.location.href = '/login.html';
       return;
     }
 
-    // Verificar que la respuesta sea JSON antes de procesarla.
     const contentType = userResponse.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       console.error('La respuesta del servidor no es JSON. Redirigiendo al login.');
@@ -1072,17 +1057,14 @@ async function initializeApp() {
       return;
     }
     
-    // 2. Procesar datos del usuario.
     currentUser = await userResponse.json();
 
   } catch (error) {
-    // Si hay un error de red, es probable que el servidor no esté corriendo.
     console.error('Error de conexión al verificar la autenticación. Redirigiendo al login.', error);
     window.location.href = '/login.html';
     return;
   }
 
-  // 3. Añadir manejadores de eventos.
   const tabs = document.querySelector('.tabs');
   const btnLogout = document.getElementById('btnLogout');
   const btnCancelEditUser = document.getElementById('btnCancelEditUser');
@@ -1193,7 +1175,6 @@ async function initializeApp() {
     showAddCourseModal(clientId);
   });
 
-  // 4. Cargar el resto de los datos de la aplicación.
   Promise.all([
     load(KEY_SETTINGS, DEFAULT_SETTINGS),
     load(KEY_DATA, []),
@@ -1213,7 +1194,6 @@ async function initializeApp() {
     renderProductTables();
     console.log('Updating client datalist...');
     updateClientDatalist();
-    // Initial population of the articulo dropdown
     populateArticuloDropdown(document.getElementById('m-categoria').value);
     
     if (currentUser) {
@@ -1246,6 +1226,5 @@ async function initializeApp() {
     alert('Error Crítico: No se pudieron cargar los datos del servidor.');
   });
 }
-
 
 document.addEventListener('DOMContentLoaded', initializeApp);
