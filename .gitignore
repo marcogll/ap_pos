@@ -3,6 +3,8 @@
 
 # Local Database
 ap-pos.db
+
+# Docmuentation tasks
 dev-tasks.md
 
 # Environment variables
