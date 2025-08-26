@@ -3,6 +3,7 @@
 
 # Local Database
 ap-pos.db
+backups/
 
 # Docmuentation tasks
 dev-tasks.md

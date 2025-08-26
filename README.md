@@ -26,14 +26,31 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 
 ### Pasos para el despliegue
 
-1.  Clona o descarga este repositorio en tu máquina local.
-2.  Abre una terminal y navega hasta el directorio raíz del proyecto.
-3.  Ejecuta el siguiente comando para construir y levantar el contenedor de la aplicación en segundo plano:
+1. **Clona o descarga** este repositorio en tu máquina local.
 
-    ```bash
-    docker-compose up -d --build
-    ```
+2. **Configura las variables de entorno**:
+   ```bash
+   cp .env.example .env
+   # Edita el archivo .env con una clave secreta segura
+   ```
 
-4.  Una vez que el comando termine, la aplicación estará disponible en tu navegador en la dirección `http://localhost:3000`.
+3. **Construye y levanta** el contenedor:
+   ```bash
+   docker-compose up -d --build
+   ```
 
-La base de datos y toda la información se almacenarán localmente dentro de los volúmenes de Docker gestionados por `docker-compose`.
+4. **Verifica que esté funcionando**:
+   ```bash
+   docker-compose ps
+   docker-compose logs ap-pos
+   ```
+
+5. **Accede a la aplicación**:
+   - URL: `http://localhost:3111`
+   - En la primera ejecución serás redirigido a `/setup.html` para crear el usuario administrador
+
+### Persistencia de datos
+
+- La base de datos SQLite se almacena en un volumen Docker persistente
+- Los datos se mantienen entre reinicios y actualizaciones del contenedor
+- Para más información sobre Docker, consulta [DOCKER.md](./DOCKER.md)

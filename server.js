@@ -25,8 +25,10 @@ app.use(session({
 }));
 
 // --- DATABASE INITIALIZATION ---
-// Usar un path absoluto para asegurar que la DB siempre se cree en la carpeta del proyecto.
-const dbPath = path.join(__dirname, 'ap-pos.db');
+// Usar un path que funcione tanto en desarrollo como en Docker
+const dbPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, 'data', 'ap-pos.db')
+  : path.join(__dirname, 'ap-pos.db');
 console.log(`Connecting to database at: ${dbPath}`);
 
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -144,7 +146,11 @@ function startServer() {
 
     // Middleware para manejar la redirección a la página de configuración
     const checkSetup = (req, res, next) => {
-        const allowedPaths = ['/setup.html', '/setup.js', '/api/setup', '/styles.css', '/src/logo.png', '/api/check-auth'];
+        const allowedPaths = [
+        '/setup.html', '/setup.js', '/api/setup',
+        '/login.html', '/login.js', '/api/login', 
+        '/styles.css', '/src/logo.png', '/api/check-auth'
+    ];
         if (needsSetup && !allowedPaths.includes(req.path)) {
             return res.redirect('/setup.html');
         }
