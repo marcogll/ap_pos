@@ -22,9 +22,12 @@ RUN mkdir -p /app/data && \
     chown -R app:app /app
 USER app
 
-# 8. Exponer el puerto
+# 8. Crear volumen para persistencia de datos
+VOLUME ["/app/data"]
+
+# 9. Exponer el puerto
 EXPOSE 3111
 
-# 9. Comando de inicio
+# 10. Comando de inicio
 CMD ["npm", "start"]
 
