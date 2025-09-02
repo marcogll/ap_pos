@@ -21,14 +21,16 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: IN_PROD, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // `secure: true` en producción con HTTPS
+  cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // secure: false para VPS sin HTTPS
 }));
 
 // --- DATABASE INITIALIZATION ---
 // Usar un path que funcione tanto en desarrollo como en Docker
-const dbPath = process.env.NODE_ENV === 'production' 
-  ? path.join(__dirname, 'data', 'ap-pos.db')
-  : path.join(__dirname, 'ap-pos.db');
+const dbPath = process.env.DB_PATH || (
+  process.env.NODE_ENV === 'production' 
+    ? path.join(__dirname, 'data', 'ap-pos.db')
+    : path.join(__dirname, 'ap-pos.db')
+);
 console.log(`Connecting to database at: ${dbPath}`);
 
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -485,8 +487,8 @@ function startServer() {
         }
     });
     
-    // --- Dashboard Route (Admin Only) ---
-    apiRouter.get('/dashboard', isAdmin, (req, res) => {
+    // --- Dashboard Route (Authenticated Users) ---
+    apiRouter.get('/dashboard', isAuthenticated, (req, res) => {
         const queries = {
             totalIncome: "SELECT SUM(monto) as total FROM movements",
             totalMovements: "SELECT COUNT(*) as total FROM movements",

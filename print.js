@@ -13,18 +13,6 @@ function esc(str) {
   }[c]));
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-    const day = String(adjustedDate.getDate()).padStart(2, '0');
-    const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
-    const year = adjustedDate.getFullYear();
-    const hours = String(adjustedDate.getHours()).padStart(2, '0');
-    const minutes = String(adjustedDate.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-}
 
 /**
  * Genera el HTML para un ticket de movimiento.
@@ -33,7 +21,37 @@ function formatDate(dateString) {
  * @returns {string} El HTML del ticket.
  */
 function templateTicket(mov, settings) {
-  const fechaLocal = formatDate(mov.fechaISO || Date.now());
+  // Función de fecha EXCLUSIVA para tickets - no depende de nada más
+  function fechaParaTicketSolamente() {
+    console.log('>>> EJECUTANDO fechaParaTicketSolamente()');
+    
+    // Crear fecha con zona horaria México directamente
+    const fechaObj = new Date();
+    console.log('>>> Objeto Date original:', fechaObj);
+    
+    // Obtener fecha en zona horaria México (UTC-6)
+    const fechaMexico = new Date(fechaObj.getTime() - (6 * 60 * 60 * 1000));
+    console.log('>>> Fecha México:', fechaMexico);
+    
+    // Obtener cada parte por separado
+    const año = fechaMexico.getUTCFullYear();
+    const mes = fechaMexico.getUTCMonth() + 1;
+    const día = fechaMexico.getUTCDate();
+    const hora = fechaMexico.getUTCHours();
+    const minuto = fechaMexico.getUTCMinutes();
+    
+    // Formatear cada número manualmente
+    const dStr = día.toString().padStart(2, '0');
+    const mStr = mes.toString().padStart(2, '0');
+    const hStr = hora.toString().padStart(2, '0');
+    const minStr = minuto.toString().padStart(2, '0');
+    
+    const fechaFinal = `${dStr}/${mStr}/${año} ${hStr}:${minStr}`;
+    console.log('>>> Fecha final:', fechaFinal);
+    
+    return fechaFinal;
+  }
+  
   const montoFormateado = Number(mov.monto).toFixed(2);
   const tipoServicio = mov.subtipo === 'Retoque' ? `Retoque de ${mov.tipo}` : mov.tipo;
 
@@ -41,23 +59,40 @@ function templateTicket(mov, settings) {
   lines.push('<div class="ticket">');
   lines.push('<img src="src/logo.png" alt="Logo" class="t-logo">');
   
-  if (settings.negocio) lines.push(`<div class="t-center t-bold">${esc(settings.negocio)}</div>`);
-  if (settings.tagline) lines.push(`<div class="t-center t-tagline">${esc(settings.tagline)}</div>`);
-  if (settings.rfc) lines.push(`<div class="t-center t-small">RFC: ${esc(settings.rfc)}</div>`);
-  if (settings.sucursal) lines.push(`<div class="t-center t-small">${esc(settings.sucursal)}</div>`);
-  if (settings.tel) lines.push(`<div class="t-center t-small">Tel: ${esc(settings.tel)}</div>`);
+  // Información del negocio - verificar estructura de settings
+  // Extraer datos desde settings o settings.settings (doble anidación)
+  const businessData = settings?.settings || settings || {};
+  
+  const negocioNombre = businessData?.negocio || settings?.negocio || 'Ale Ponce';
+  const negocioTagline = businessData?.tagline || settings?.tagline || 'beauty expert';  
+  const negocioCalle = businessData?.calle || settings?.calle;
+  const negocioColonia = businessData?.colonia || settings?.colonia;
+  const negocioCP = businessData?.cp || settings?.cp;
+  const negocioRFC = businessData?.rfc || settings?.rfc;
+  const negocioTel = businessData?.tel || settings?.tel || '8443555108';
+  
+  lines.push(`<div class="t-center t-bold t-business-name">${esc(negocioNombre)}</div>`);
+  lines.push(`<div class="t-center t-tagline">${esc(negocioTagline)}</div>`);
+  lines.push('<div class="t-spacer"></div>');
+  if (negocioCalle) lines.push(`<div class="t-center t-small">${esc(negocioCalle)}</div>`);
+  if (negocioColonia && negocioCP) lines.push(`<div class="t-center t-small">${esc(negocioColonia)}, ${esc(negocioCP)}</div>`);
+  if (negocioRFC) lines.push(`<div class="t-center t-small">RFC: ${esc(negocioRFC)}</div>`);
+  lines.push(`<div class="t-center t-small">Tel: ${esc(negocioTel)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
   lines.push(`<div class="t-row t-small"><span>Folio:</span><span>${esc(mov.folio)}</span></div>`);
-  lines.push(`<div class="t-row t-small"><span>Fecha:</span><span>${esc(fechaLocal)}</span></div>`);
+  // Usar la función de fecha específica para tickets
+  const fechaFinal = fechaParaTicketSolamente();
+  
+  lines.push(`<div class="t-row t-small"><span>Fecha:</span><span>${esc(fechaFinal)}</span></div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div><span class="t-bold">${esc(tipoServicio)}</span></div>`);
-  if (mov.client) lines.push(`<div class="t-small">Cliente: ${esc(mov.client.nombre)}</div>`);
-  if (mov.concepto) lines.push(`<div class="t-small">Concepto: ${esc(mov.concepto)}</div>`);
-  if (mov.staff)  lines.push(`<div class="t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
-  if (mov.metodo) lines.push(`<div class="t-small">Método: ${esc(mov.metodo)}</div>`);
-  if (mov.notas)  lines.push(`<div class="t-small">Notas: ${esc(mov.notas)}</div>`);
+  lines.push(`<div class="t-service-title t-bold">${esc(tipoServicio)}</div>`);
+  if (mov.client) lines.push(`<div class="t-small t-service-detail">Cliente: ${esc(mov.client.nombre)}</div>`);
+  if (mov.concepto) lines.push(`<div class="t-small t-service-detail">Concepto: ${esc(mov.concepto)}</div>`);
+  if (mov.staff) lines.push(`<div class="t-small t-service-detail"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
+  if (mov.metodo) lines.push(`<div class="t-small t-service-detail">Método: ${esc(mov.metodo)}</div>`);
+  if (mov.notas) lines.push(`<div class="t-small t-service-detail">Notas: ${esc(mov.notas)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
   lines.push(`<div class="t-row t-bold"><span>Total</span><span>${montoFormateado}</span></div>`);
@@ -72,16 +107,20 @@ function templateTicket(mov, settings) {
       if (mov.client.cedulaMedico) lines.push(`<div class="t-small">Cédula: ${esc(mov.client.cedulaMedico)}</div>`);
     }
     lines.push('<div class="t-divider"></div>');
-    lines.push(`<div class="t-small t-center">Al consentir el servicio, declara que la información médica proporcionada es veraz.</div>`);
+    const consentText = mov.tipo === 'Curso' || tipoServicio.toLowerCase().includes('curso') 
+      ? 'Al inscribirse al curso, acepta los términos y condiciones del programa educativo.'
+      : 'Al consentir el servicio, declara que la información médica proporcionada es veraz.';
+    lines.push(`<div class="t-small t-center">${consentText}</div>`);
   }
 
-  if (settings.leyenda) lines.push(`<div class="t-footer t-center t-small">${esc(settings.leyenda)}</div>`);
-  
   lines.push('<div class="t-qr-section">');
-  lines.push('<div class="t-small t-bold">¡Tu opinión es muy importante!</div>');
-  lines.push('<div class="t-small">Escanea el código QR para darnos tu feedback.</div>');
+  lines.push('<div class="t-small t-bold t-center">¡Tu opinión es muy importante!</div>');
+  lines.push('<div class="t-small t-center">Escanea el código QR para darnos tu feedback.</div>');
   lines.push('<canvas id="qr-canvas"></canvas>');
   lines.push('</div>');
+  
+  const negocioLeyenda = businessData?.leyenda || settings?.leyenda;
+  if (negocioLeyenda) lines.push(`<div class="t-footer t-center t-small">${esc(negocioLeyenda)}</div>`);
 
   lines.push('</div>');
   return lines.join('');

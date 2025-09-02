@@ -1,5 +1,5 @@
 import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js';
+import { renderTicketAndPrint } from './print.js?v=1.8';
 
 // --- UTILITIES ---
 function escapeHTML(str) {
@@ -12,6 +12,448 @@ function escapeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function construirFechaCita() {
+    const dia = document.getElementById('m-cita-dia').value;
+    const mes = document.getElementById('m-cita-mes').value;
+    const año = document.getElementById('m-cita-año').value;
+    
+    if (!dia || !mes || !año) {
+        return '';
+    }
+    
+    // Formatear con ceros a la izquierda
+    const diaStr = dia.padStart(2, '0');
+    const mesStr = mes.padStart(2, '0');
+    
+    // Retornar en formato YYYY-MM-DD para compatibilidad
+    return `${año}-${mesStr}-${diaStr}`;
+}
+
+// Sistema dinámico de productos y descuentos
+let selectedProducts = [];
+let currentSubtotal = 0;
+let currentDiscount = 0;
+
+function initializeDynamicSystem() {
+    const articuloSelect = document.getElementById('m-articulo');
+    const categoriaSelect = document.getElementById('m-categoria');
+    const addProductBtn = document.getElementById('add-product-btn');
+    const discountType = document.getElementById('discount-type');
+    const discountValue = document.getElementById('discount-value');
+    const discountReason = document.getElementById('discount-reason');
+    const clienteInput = document.getElementById('m-cliente');
+
+    // Listener para cambio de categoría (servicio/curso)
+    if (categoriaSelect) {
+        categoriaSelect.addEventListener('change', function() {
+            populateArticuloDropdown(this.value);
+        });
+    }
+
+    // Botón para agregar productos
+    if (addProductBtn) {
+        addProductBtn.addEventListener('click', addCurrentProduct);
+    }
+
+    // Sistema de descuentos colapsable
+    const discountToggle = document.getElementById('discount-toggle');
+    const discountContainer = document.getElementById('discount-container');
+    const discountSymbol = document.getElementById('discount-symbol');
+    
+    if (discountToggle && discountContainer) {
+        discountToggle.addEventListener('change', function() {
+            if (this.checked) {
+                discountContainer.style.display = 'block';
+                // Habilitar campos cuando se abre la sección
+                if (discountType.value) {
+                    discountValue.disabled = false;
+                    discountReason.disabled = false;
+                }
+            } else {
+                discountContainer.style.display = 'none';
+                // Limpiar y deshabilitar campos cuando se cierra
+                discountType.value = '';
+                discountValue.value = '';
+                discountReason.value = '';
+                discountValue.disabled = true;
+                discountReason.disabled = true;
+                calculateTotals();
+            }
+        });
+    }
+
+    if (discountType) {
+        discountType.addEventListener('change', function() {
+            const isDiscountSelected = this.value !== '';
+            discountValue.disabled = !isDiscountSelected;
+            discountReason.disabled = !isDiscountSelected;
+            
+            // Actualizar símbolo según el tipo
+            if (discountSymbol) {
+                if (this.value === 'percentage') {
+                    discountSymbol.textContent = '%';
+                } else if (this.value === 'amount') {
+                    discountSymbol.textContent = '$';
+                } else if (this.value === 'warrior') {
+                    discountSymbol.textContent = '🎗️';
+                } else {
+                    discountSymbol.textContent = '%';
+                }
+            }
+            
+            if (!isDiscountSelected) {
+                discountValue.value = '';
+                discountReason.value = '';
+            }
+            calculateTotals();
+        });
+    }
+
+    if (discountValue) {
+        discountValue.addEventListener('input', calculateTotals);
+    }
+
+    // Detección automática de pacientes oncológicos para descuento Warrior
+    if (clienteInput) {
+        clienteInput.addEventListener('blur', function() {
+            const clienteNombre = this.value.trim();
+            if (clienteNombre) {
+                const client = clients.find(c => c.nombre.toLowerCase() === clienteNombre.toLowerCase());
+                if (client && client.esOncologico) {
+                    // Activar automáticamente el descuento Warrior
+                    activateWarriorDiscount();
+                }
+                // Cargar anticipos disponibles del cliente
+                loadClientAnticipos(clienteNombre);
+            } else {
+                // Si no hay cliente, ocultar anticipos
+                document.getElementById('anticipos-section').style.display = 'none';
+            }
+        });
+    }
+}
+
+function activateWarriorDiscount() {
+    const discountToggle = document.getElementById('discount-toggle');
+    const discountContainer = document.getElementById('discount-container');
+    const discountType = document.getElementById('discount-type');
+    const discountValue = document.getElementById('discount-value');
+    const discountReason = document.getElementById('discount-reason');
+
+    // Activar la sección de descuentos
+    if (discountToggle && !discountToggle.checked) {
+        discountToggle.checked = true;
+        if (discountContainer) {
+            discountContainer.style.display = 'block';
+        }
+    }
+
+    // Seleccionar descuento Warrior
+    if (discountType) {
+        discountType.value = 'warrior';
+        discountType.dispatchEvent(new Event('change'));
+    }
+
+    // Establecer valores automáticamente
+    if (discountValue) {
+        discountValue.value = 100;
+        discountValue.disabled = true;
+    }
+
+    if (discountReason) {
+        discountReason.value = 'Paciente Oncológico';
+        discountReason.disabled = true;
+    }
+
+    // Calcular totales
+    calculateTotals();
+}
+
+function showDynamicSections() {
+    // Show the product selection area and totals
+    const selectedProducts = document.getElementById('selected-products');
+    const totalsSection = document.querySelector('.totals-section');
+    
+    if (selectedProducts) selectedProducts.style.display = 'block';
+    if (totalsSection) totalsSection.style.display = 'block';
+}
+
+function hideDynamicSections() {
+    const selectedProductsEl = document.getElementById('selected-products');
+    const totalsSection = document.querySelector('.totals-section');
+    
+    if (selectedProductsEl) selectedProductsEl.style.display = 'none';
+    if (totalsSection) totalsSection.style.display = 'none';
+    
+    selectedProducts = [];
+    renderSelectedProducts();
+}
+
+function addCurrentProduct() {
+    const articuloSelect = document.getElementById('m-articulo');
+    const categoriaSelect = document.getElementById('m-categoria');
+    const quantityInput = document.getElementById('product-quantity');
+
+    if (!categoriaSelect.value) {
+        alert('Selecciona el tipo (servicio, curso o anticipo) primero');
+        return;
+    }
+
+    if (!articuloSelect.value) {
+        alert('Selecciona un producto primero');
+        return;
+    }
+
+    const quantity = parseInt(quantityInput.value) || 1;
+    
+    // Manejar anticipos de forma especial
+    if (categoriaSelect.value === 'anticipo') {
+        let anticipoAmount = prompt('Ingresa el monto del anticipo:', '');
+        if (anticipoAmount === null) return; // Usuario canceló
+        
+        anticipoAmount = parseFloat(anticipoAmount);
+        if (isNaN(anticipoAmount) || anticipoAmount <= 0) {
+            alert('Por favor ingresa un monto válido para el anticipo');
+            return;
+        }
+
+        const clienteInput = document.getElementById('m-cliente');
+        const clienteName = clienteInput.value.trim();
+        let anticipoName = 'Anticipo';
+        if (clienteName) {
+            anticipoName = `Anticipo - ${clienteName}`;
+        }
+        
+        const existingIndex = selectedProducts.findIndex(p => p.name === anticipoName);
+        
+        if (existingIndex >= 0) {
+            selectedProducts[existingIndex].quantity += quantity;
+            selectedProducts[existingIndex].price += anticipoAmount; // Acumular el monto
+        } else {
+            selectedProducts.push({
+                id: 'anticipo-' + Date.now(),
+                name: anticipoName,
+                price: anticipoAmount,
+                quantity: quantity,
+                type: 'anticipo'
+            });
+        }
+    } else {
+        // Manejar servicios y cursos como antes
+        const productData = products.find(p => p.name === articuloSelect.value && p.type === categoriaSelect.value);
+        
+        if (productData) {
+            const existingIndex = selectedProducts.findIndex(p => p.name === productData.name);
+            
+            if (existingIndex >= 0) {
+                selectedProducts[existingIndex].quantity += quantity;
+            } else {
+                selectedProducts.push({
+                    id: productData.id,
+                    name: productData.name,
+                    price: parseFloat(productData.price),
+                    quantity: quantity,
+                    type: categoriaSelect.value
+                });
+            }
+        } else {
+            alert('Producto no encontrado');
+            return;
+        }
+    }
+    
+    renderSelectedProducts();
+    calculateTotals();
+    quantityInput.value = 1;
+    articuloSelect.value = '';
+
+    // Mostrar descuento inmediatamente
+    showDiscountSection();
+}
+
+function removeProduct(productName) {
+    selectedProducts = selectedProducts.filter(p => p.name !== productName);
+    renderSelectedProducts();
+    calculateTotals();
+}
+
+function renderSelectedProducts() {
+    const container = document.getElementById('selected-products');
+    if (!container) return;
+
+    if (selectedProducts.length === 0) {
+        container.innerHTML = '<p style="color: #6c757d; font-style: italic;">No hay productos seleccionados</p>';
+        return;
+    }
+
+    const html = selectedProducts.map(product => `
+        <div class="product-item">
+            <span class="product-item-name">${escapeHTML(product.name)} <small>(${product.type === 'service' ? 'Servicio' : 'Curso'})</small></span>
+            <span class="product-item-quantity">${product.quantity}x</span>
+            <span class="product-item-price">$${(product.price * product.quantity).toFixed(2)}</span>
+            <button type="button" class="btn-remove" onclick="removeProduct('${escapeHTML(product.name)}')">×</button>
+        </div>
+    `).join('');
+
+    container.innerHTML = html;
+}
+
+function showDiscountSection() {
+    const discountSection = document.querySelector('.discount-section');
+    if (discountSection && selectedProducts.length > 0) {
+        discountSection.style.display = 'block';
+        discountSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+async function loadClientAnticipos(clienteNombre) {
+    if (!clienteNombre) {
+        document.getElementById('anticipos-section').style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Buscar anticipos en el historial de movimientos
+        const response = await fetch('/api/movements');
+        const movements = await response.json();
+        
+        // Filtrar anticipos del cliente que no han sido aplicados
+        const anticipos = movements.filter(mov => 
+            mov.concepto && mov.concepto.includes('Anticipo') && 
+            mov.client && mov.client.nombre.toLowerCase() === clienteNombre.toLowerCase() &&
+            !mov.aplicado // Assuming we'll add an 'aplicado' field to track used anticipos
+        );
+        
+        const anticiposSection = document.getElementById('anticipos-section');
+        const anticiposContainer = document.getElementById('anticipos-disponibles');
+        
+        if (anticipos.length > 0) {
+            anticiposSection.style.display = 'block';
+            anticiposContainer.innerHTML = '';
+            
+            anticipos.forEach(anticipo => {
+                const anticipoItem = document.createElement('div');
+                anticipoItem.className = 'anticipo-item';
+                anticipoItem.innerHTML = `
+                    <div class="anticipo-info">
+                        <div class="anticipo-monto">$${parseFloat(anticipo.monto).toFixed(2)}</div>
+                        <div class="anticipo-fecha">Fecha: ${new Date(anticipo.fecha).toLocaleDateString()}</div>
+                        <div class="anticipo-folio">Folio: ${anticipo.folio}</div>
+                    </div>
+                    <div class="anticipo-actions">
+                        <button class="btn-aplicar-anticipo" onclick="aplicarAnticipo('${anticipo.id}', ${anticipo.monto})">
+                            Aplicar
+                        </button>
+                    </div>
+                `;
+                anticiposContainer.appendChild(anticipoItem);
+            });
+        } else {
+            anticiposSection.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading anticipos:', error);
+        document.getElementById('anticipos-section').style.display = 'none';
+    }
+}
+
+function aplicarAnticipo(anticipoId, monto) {
+    // Agregar el anticipo como un "descuento" o crédito
+    const discountToggle = document.getElementById('discount-toggle');
+    const discountContainer = document.getElementById('discount-container');
+    const discountType = document.getElementById('discount-type');
+    const discountValue = document.getElementById('discount-value');
+    const discountReason = document.getElementById('discount-reason');
+    
+    // Activar la sección de descuentos
+    if (discountToggle && !discountToggle.checked) {
+        discountToggle.checked = true;
+        if (discountContainer) {
+            discountContainer.style.display = 'block';
+        }
+    }
+    
+    // Configurar como descuento de cantidad fija
+    if (discountType) {
+        discountType.value = 'amount';
+        discountType.dispatchEvent(new Event('change'));
+    }
+    
+    // Establecer el monto del anticipo
+    if (discountValue) {
+        discountValue.value = parseFloat(monto).toFixed(2);
+        discountValue.disabled = true;
+    }
+    
+    if (discountReason) {
+        discountReason.value = `Anticipo aplicado (ID: ${anticipoId})`;
+        discountReason.disabled = true;
+    }
+    
+    // Calcular totales
+    calculateTotals();
+    
+    // Ocultar la sección de anticipos para evitar aplicar múltiples
+    document.getElementById('anticipos-section').style.display = 'none';
+    
+    alert('Anticipo aplicado correctamente');
+}
+
+function calculateTotals() {
+    currentSubtotal = selectedProducts.reduce((sum, product) => {
+        return sum + (product.price * product.quantity);
+    }, 0);
+
+    // Calcular descuento
+    const discountType = document.getElementById('discount-type')?.value;
+    const discountValue = parseFloat(document.getElementById('discount-value')?.value) || 0;
+
+    if (discountType === 'percentage') {
+        currentDiscount = currentSubtotal * (discountValue / 100);
+    } else if (discountType === 'amount') {
+        currentDiscount = Math.min(discountValue, currentSubtotal);
+    } else if (discountType === 'warrior') {
+        currentDiscount = currentSubtotal; // 100% de descuento
+    } else {
+        currentDiscount = 0;
+    }
+
+    const total = currentSubtotal - currentDiscount;
+
+    // Actualizar displays principales
+    const subtotalDisplay = document.getElementById('subtotal-display');
+    const discountDisplay = document.getElementById('discount-display');
+    const discountAmountDisplay = document.getElementById('discount-amount-display');
+    const totalDisplay = document.getElementById('total-display');
+
+    if (subtotalDisplay) subtotalDisplay.textContent = `$${currentSubtotal.toFixed(2)}`;
+    if (totalDisplay) totalDisplay.textContent = `$${total.toFixed(2)}`;
+    
+    if (currentDiscount > 0) {
+        if (discountDisplay) discountDisplay.style.display = 'flex';
+        if (discountAmountDisplay) discountAmountDisplay.textContent = `-$${currentDiscount.toFixed(2)}`;
+    } else {
+        if (discountDisplay) discountDisplay.style.display = 'none';
+    }
+
+    // Actualizar preview del descuento en la sección colapsable
+    const discountPreview = document.getElementById('discount-preview');
+    const discountPreviewAmount = document.getElementById('discount-preview-amount');
+    
+    if (discountPreview && discountPreviewAmount) {
+        if (currentDiscount > 0) {
+            discountPreview.style.display = 'block';
+            discountPreviewAmount.textContent = `-$${currentDiscount.toFixed(2)}`;
+        } else {
+            discountPreview.style.display = 'none';
+        }
+    }
+
+    // Actualizar el campo de monto original
+    const montoInput = document.getElementById('m-monto');
+    if (montoInput) montoInput.value = total.toFixed(2);
 }
 
 function formatDate(dateString) {
@@ -73,7 +515,7 @@ let isDashboardLoading = false;
 // --- LÓGICA DE NEGOCIO ---
 
 async function loadDashboardData() {
-  if (currentUser.role !== 'admin' || isDashboardLoading) {
+  if (isDashboardLoading) {
     return;
   }
   isDashboardLoading = true;
@@ -144,16 +586,38 @@ function generateFolio() {
 }
 
 async function addMovement(mov) {
-  await save('movements', { movement: mov });
-  movements.unshift(mov);
-  renderTable();
+  try {
+    const response = await fetch('/api/movements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ movement: mov })
+    });
+    if (response.ok) {
+      movements.unshift(mov);
+      renderTable();
+    } else {
+      throw new Error('Failed to save movement');
+    }
+  } catch (error) {
+    console.error('Error saving movement:', error);
+    alert('Error al guardar el movimiento');
+  }
 }
 
 async function deleteMovement(id) {
   if (confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
-    await remove(KEY_DATA, id);
-    movements = movements.filter(m => m.id !== id);
-    renderTable();
+    try {
+      const response = await fetch(`/api/movements/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        movements = movements.filter(m => m.id !== id);
+        renderTable();
+      } else {
+        throw new Error('Failed to delete movement');
+      }
+    } catch (error) {
+      console.error('Error deleting movement:', error);
+      alert('Error al eliminar el movimiento');
+    }
   }
 }
 
@@ -174,7 +638,7 @@ async function saveClient(clientData) {
       genero: document.getElementById('c-genero').value,
       cumpleaños: document.getElementById('c-cumple').value,
       consentimiento: document.getElementById('c-consent').checked,
-      esOncologico: document.getElementById('c-esOncologico').checked,
+      esOncologico: document.getElementById('c-pacienteOncologico').checked,
       oncologoAprueba: document.getElementById('c-oncologoAprueba').checked,
       nombreMedico: document.getElementById('c-nombreMedico').value,
       telefonoMedico: document.getElementById('c-telefonoMedico').value,
@@ -183,7 +647,20 @@ async function saveClient(clientData) {
     };
   }
 
-  await save('clients', { client: clientToSave });
+  try {
+    const response = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client: clientToSave })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to save client');
+    }
+  } catch (error) {
+    console.error('Error saving client:', error);
+    alert('Error al guardar el cliente');
+    return;
+  }
 
   if (isUpdate) {
     const index = clients.findIndex(c => c.id === clientToSave.id);
@@ -204,11 +681,20 @@ async function saveClient(clientData) {
 
 async function deleteClient(id) {
   if (confirm('¿Estás seguro de que quieres eliminar este cliente? Se conservarán sus recibos históricos.')) {
-    await remove(KEY_CLIENTS, id);
-    clients = clients.filter(c => c.id !== id);
-    renderClientsTable();
-    updateClientDatalist();
-    clearClientRecord();
+    try {
+      const response = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        clients = clients.filter(c => c.id !== id);
+        renderClientsTable();
+        updateClientDatalist();
+        clearClientRecord();
+      } else {
+        throw new Error('Failed to delete client');
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      alert('Error al eliminar el cliente');
+    }
   }
 }
 
@@ -367,14 +853,34 @@ function updateClientDatalist() {
 function populateArticuloDropdown(category) {
     const articuloSelect = document.getElementById('m-articulo');
     if (!articuloSelect) return;
-    articuloSelect.innerHTML = '';
-    const items = products.filter(p => p.type === category);
-    items.forEach(i => {
-        const option = document.createElement('option');
-        option.value = i.name;
-        option.textContent = i.name;
-        articuloSelect.appendChild(option);
-    });
+    
+    // Clear existing options except the first default option
+    if (category) {
+        let placeholder = '';
+        if (category === 'service') placeholder = 'servicio';
+        else if (category === 'course') placeholder = 'curso';
+        else if (category === 'anticipo') placeholder = 'anticipo';
+        
+        articuloSelect.innerHTML = `<option value="">-- Seleccionar ${placeholder} --</option>`;
+        
+        if (category === 'anticipo') {
+            // Para anticipos, permitir búsqueda automática o ingreso manual
+            const option = document.createElement('option');
+            option.value = 'Anticipo';
+            option.textContent = 'Anticipo - $0.00 (Ingreso manual)';
+            articuloSelect.appendChild(option);
+        } else {
+            const items = products.filter(p => p.type === category);
+            items.forEach(i => {
+                const option = document.createElement('option');
+                option.value = i.name;
+                option.textContent = `${i.name} - $${parseFloat(i.price).toFixed(2)}`;
+                articuloSelect.appendChild(option);
+            });
+        }
+    } else {
+        articuloSelect.innerHTML = '<option value="">-- Primero seleccione tipo --</option>';
+    }
 }
 
 // --- MANEJADORES DE EVENTOS ---
@@ -393,8 +899,22 @@ async function handleSaveSettings(e) {
   settings.tel = document.getElementById('s-tel').value;
   settings.leyenda = document.getElementById('s-leyenda').value;
   settings.folioPrefix = document.getElementById('s-folioPrefix').value;
-  await save(KEY_SETTINGS, { settings });
-  alert('Configuración guardada.');
+  
+  try {
+    const response = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    });
+    if (response.ok) {
+      alert('Configuración guardada.');
+    } else {
+      throw new Error('Failed to save settings');
+    }
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    alert('Error al guardar la configuración');
+  }
 }
 
 async function handleSaveCredentials(e) {
@@ -651,6 +1171,11 @@ async function handleNewMovement(e) {
   const monto = parseFloat(document.getElementById('m-monto').value || 0);
   const clienteNombre = document.getElementById('m-cliente').value;
 
+  if (selectedProducts.length === 0) {
+    alert('Por favor selecciona al menos un producto o servicio');
+    return;
+  }
+
   let client = clients.find(c => c.nombre.toLowerCase() === clienteNombre.toLowerCase());
   if (!client) {
     if (confirm(`El cliente "${clienteNombre}" no existe. ¿Deseas crearlo?`)) {
@@ -668,27 +1193,41 @@ async function handleNewMovement(e) {
     }
   }
 
+  // Build concept from selected products
+  const concepto = selectedProducts.map(p => `${p.name} (${p.quantity}x)`).join(', ');
+
   const newMovement = {
     id: crypto.randomUUID(),
     folio: generateFolio(),
     fechaISO: new Date().toISOString(),
     clienteId: client.id,
-    tipo: document.getElementById('m-categoria').value,
+    tipo: selectedProducts.length > 0 ? selectedProducts[0].type : 'service',
     subtipo: '',
     monto: Number(monto.toFixed(2)),
     metodo: document.getElementById('m-metodo').value,
-    concepto: document.getElementById('m-articulo').value,
+    concepto: concepto,
     staff: currentUser.name,
     notas: document.getElementById('m-notas').value,
-    fechaCita: document.getElementById('m-fecha-cita').value,
+    fechaCita: construirFechaCita(),
     horaCita: document.getElementById('m-hora-cita').value,
+    productos: selectedProducts, // Store product details for ticket
+    descuento: currentDiscount,
+    subtotal: currentSubtotal
   };
 
   await addMovement(newMovement);
   renderTicketAndPrint({ ...newMovement, client }, settings);
+  
+  // Reset form and clear products
   form.reset();
+  selectedProducts = [];
+  currentSubtotal = 0;
+  currentDiscount = 0;
+  renderSelectedProducts();
+  calculateTotals();
+  hideDynamicSections();
+  
   document.getElementById('m-cliente').focus();
-  subtipoContainer.classList.add('hidden');
 }
 
 function exportClientHistoryCSV(client, history) {
@@ -915,7 +1454,7 @@ function activateTab(tabId) {
     tabContent.classList.add('active');
   }
 
-  if (tabId === 'tab-dashboard' && currentUser.role === 'admin') {
+  if (tabId === 'tab-dashboard') {
     if (!incomeChart) {
       const ctx = document.getElementById('incomeChart').getContext('2d');
       incomeChart = new Chart(ctx, {
@@ -1015,8 +1554,8 @@ function setupUIForRole(role) {
             })
             .catch(err => console.error(err));
     } else {
-        if (dashboardTab) dashboardTab.style.display = 'none';
-        if (settingsTab) settingsTab.style.display = 'none';
+        if (dashboardTab) dashboardTab.style.display = 'block';
+        if (settingsTab) settingsTab.style.display = 'block';
         if (userManagementSection) userManagementSection.style.display = 'none';
         if (dbInfoIcon) dbInfoIcon.style.display = 'none';
     }
@@ -1027,17 +1566,12 @@ function setupUIForRole(role) {
 }
 
 function populateFooter() {
-    const dateElement = document.getElementById('footer-date');
-    const versionElement = document.getElementById('footer-version');
-
-    if (dateElement) {
-        dateElement.textContent = formatDate(new Date().toISOString());
-    }
-    if (versionElement) {
-        versionElement.textContent = `Versión ${APP_VERSION}`;
-    }
+    // Footer elements removed - no longer needed
 }
 
+
+// Make removeProduct globally accessible
+window.removeProduct = removeProduct;
 
 // --- INICIALIZACIÓN ---
 
@@ -1106,9 +1640,12 @@ async function initializeApp() {
     document.getElementById('oncologico-fields').classList.add('hidden');
   });
 
-  document.getElementById('c-esOncologico')?.addEventListener('change', (e) => {
+  document.getElementById('c-pacienteOncologico')?.addEventListener('change', (e) => {
     const oncologicoFields = document.getElementById('oncologico-fields');
-    oncologicoFields.classList.toggle('hidden', !e.target.checked);
+    if (oncologicoFields) {
+      oncologicoFields.classList.toggle('hidden', !e.target.checked);
+      oncologicoFields.classList.toggle('active', e.target.checked);
+    }
   });
 
   btnCancelEditUser?.addEventListener('click', (e) => {
@@ -1150,10 +1687,15 @@ async function initializeApp() {
           document.getElementById('c-cumple').value = client.cumpleaños;
           document.getElementById('c-consent').checked = client.consentimiento;
 
-          const esOncologicoCheckbox = document.getElementById('c-esOncologico');
+          const esOncologicoCheckbox = document.getElementById('c-pacienteOncologico');
           const oncologicoFields = document.getElementById('oncologico-fields');
-          esOncologicoCheckbox.checked = client.esOncologico;
-          oncologicoFields.classList.toggle('hidden', !client.esOncologico);
+          if (esOncologicoCheckbox) {
+            esOncologicoCheckbox.checked = client.esOncologico;
+          }
+          if (oncologicoFields) {
+            oncologicoFields.classList.toggle('hidden', !client.esOncologico);
+            oncologicoFields.classList.toggle('active', client.esOncologico);
+          }
 
           document.getElementById('c-oncologoAprueba').checked = client.oncologoAprueba;
           document.getElementById('c-nombreMedico').value = client.nombreMedico || '';
@@ -1180,10 +1722,10 @@ async function initializeApp() {
   });
 
   Promise.all([
-    load(KEY_SETTINGS, DEFAULT_SETTINGS),
-    load(KEY_DATA, []),
-    load(KEY_CLIENTS, []),
-    fetch('/api/products').then(res => res.json()),
+    fetch('/api/settings').then(res => res.json()).catch(() => DEFAULT_SETTINGS),
+    fetch('/api/movements').then(res => res.json()).catch(() => []),
+    fetch('/api/clients').then(res => res.json()).catch(() => []),
+    fetch('/api/products').then(res => res.json()).catch(() => []),
   ]).then(values => {
     console.log('Initial data loaded:', values);
     [settings, movements, clients, products] = values;
@@ -1198,7 +1740,7 @@ async function initializeApp() {
     renderProductTables();
     console.log('Updating client datalist...');
     updateClientDatalist();
-    populateArticuloDropdown(document.getElementById('m-categoria').value);
+    populateArticuloDropdown('');
     
     if (currentUser) {
         console.log('Setting user info in form...');
@@ -1211,11 +1753,7 @@ async function initializeApp() {
     setupUIForRole(currentUser.role);
     
     console.log('Activating initial tab...');
-    if (currentUser.role === 'admin') {
-        activateTab('tab-dashboard');
-    } else {
-        activateTab('tab-movements');
-    }
+    activateTab('tab-dashboard');
 
     console.log('Activating client sub-tab...');
     activateClientSubTab('sub-tab-register');
@@ -1223,6 +1761,8 @@ async function initializeApp() {
     clearClientRecord();
     console.log('Populating footer...');
     populateFooter();
+    console.log('Initializing dynamic system...');
+    initializeDynamicSystem();
     console.log('Initialization complete.');
 
   }).catch(error => {
