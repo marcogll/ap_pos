@@ -1,6 +1,6 @@
 services:
   ap-pos:
-    image: coderk/ap_pos:1.3.5
+    image: marcogll/ap_pos:1.3.5
     container_name: ap-pos
     restart: unless-stopped
     ports:

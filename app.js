@@ -1050,6 +1050,7 @@ async function handleAddOrUpdateProduct(e) {
                 products.push(result);
             }
             renderProductTables();
+            updateUnifiedProductsAfterChange(); // Actualizar tabla unificada
             formProduct.reset();
             document.getElementById('p-id').value = '';
         } else {
@@ -1067,6 +1068,7 @@ async function deleteProduct(id) {
             if (response.ok) {
                 products = products.filter(p => p.id !== id);
                 renderProductTables();
+                updateUnifiedProductsAfterChange(); // Actualizar tabla unificada
             }
         } catch (error) {
             alert('Error de conexión al eliminar el producto.');
@@ -1763,6 +1765,8 @@ async function initializeApp() {
     populateFooter();
     console.log('Initializing dynamic system...');
     initializeDynamicSystem();
+    console.log('Initializing unified products table...');
+    initializeUnifiedTable();
     console.log('Initialization complete.');
 
   }).catch(error => {
@@ -1770,5 +1774,315 @@ async function initializeApp() {
     alert('Error Crítico: No se pudieron cargar los datos del servidor.');
   });
 }
+
+// --- NUEVA IMPLEMENTACIÓN: TABLA UNIFICADA DE PRODUCTOS ---
+
+// Estado global para la tabla unificada
+let allProductsData = [];
+let currentSortField = 'descripcion';
+let currentSortDirection = 'asc';
+
+// Generar folio único para productos
+function generateProductFolio(type) {
+    const folioPrefix = settings.folioPrefix || 'PRD';
+    const timestamp = Date.now().toString().slice(-6);
+    const typeCode = {
+        'service': 'SRV',
+        'course': 'CRS',
+        'anticipo': 'ANT'
+    };
+    return `${folioPrefix}-${typeCode[type]}-${timestamp}`;
+}
+
+// Construir fecha de cita para anticipos
+function construirFechaCitaProducto() {
+    const dia = document.getElementById('p-cita-dia').value;
+    const mes = document.getElementById('p-cita-mes').value;
+    const año = document.getElementById('p-cita-año').value;
+    const hora = document.getElementById('p-hora-cita').value;
+    
+    if (!dia || !mes || !año) {
+        return '';
+    }
+    
+    const diaStr = dia.padStart(2, '0');
+    const mesStr = mes.padStart(2, '0');
+    const horaStr = hora || '00:00';
+    
+    return `${diaStr}/${mesStr}/${año} ${horaStr}`;
+}
+
+// Renderizar tabla unificada
+function renderUnifiedProductsTable() {
+    const tableBody = document.querySelector('#tblAllProducts tbody');
+    if (!tableBody) return;
+
+    // Limpiar tabla
+    tableBody.innerHTML = '';
+
+    // Aplicar filtros
+    let filteredData = [...allProductsData];
+    
+    const filterType = document.getElementById('filter-type')?.value;
+    if (filterType) {
+        filteredData = filteredData.filter(item => item.categoria === filterType);
+    }
+
+    const searchTerm = document.getElementById('search-products')?.value?.toLowerCase();
+    if (searchTerm) {
+        filteredData = filteredData.filter(item => 
+            item.descripcion.toLowerCase().includes(searchTerm) ||
+            item.categoria.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    // Ordenar datos
+    filteredData.sort((a, b) => {
+        let aValue = a[currentSortField] || '';
+        let bValue = b[currentSortField] || '';
+        
+        if (typeof aValue === 'string') {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+        
+        if (currentSortDirection === 'asc') {
+            return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        } else {
+            return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+    });
+
+    // Renderizar filas
+    filteredData.forEach(item => {
+        const row = document.createElement('tr');
+        
+        const statusClass = item.status === 'cancelled' ? 'status-cancelled' : 'status-active';
+        const categoryClass = `category-${item.categoria}`;
+        
+        row.innerHTML = `
+            <td>${item.folio}</td>
+            <td>${item.fecha}</td>
+            <td>${item.cita || 'N/A'}</td>
+            <td>${escapeHTML(item.descripcion)}</td>
+            <td><span class="category-badge ${categoryClass}">${getCategoryName(item.categoria)}</span></td>
+            <td>$${parseFloat(item.precio || 0).toFixed(2)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-icon btn-edit" onclick="editUnifiedProduct('${item.id}')" title="Editar">
+                        <span class="material-icons-outlined">edit</span>
+                    </button>
+                    <button class="btn-icon btn-cancel" onclick="toggleProductStatus('${item.id}')" title="${item.status === 'cancelled' ? 'Reactivar' : 'Cancelar'}">
+                        <span class="material-icons-outlined">${item.status === 'cancelled' ? 'check_circle' : 'cancel'}</span>
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="deleteUnifiedProduct('${item.id}')" title="Eliminar">
+                        <span class="material-icons-outlined">delete</span>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+}
+
+// Obtener nombre amigable de categoría
+function getCategoryName(categoria) {
+    const names = {
+        'service': 'Servicio',
+        'course': 'Curso',
+        'anticipo': 'Anticipo'
+    };
+    return names[categoria] || categoria;
+}
+
+// Cargar datos unificados
+function loadUnifiedProductsData() {
+    allProductsData = [];
+    
+    // Agregar productos existentes (servicios y cursos)
+    products.forEach(product => {
+        allProductsData.push({
+            id: product.id,
+            folio: product.folio || generateProductFolio(product.type),
+            fecha: product.created_at ? new Date(product.created_at).toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES'),
+            cita: '', // Los servicios y cursos no tienen cita predefinida
+            descripcion: product.name,
+            categoria: product.type,
+            precio: product.price || 0,
+            status: product.status || 'active'
+        });
+    });
+    
+    // Agregar anticipos desde movimientos
+    const anticiposMovements = movements.filter(m => 
+        m.concepto && (m.concepto.includes('Anticipo') || m.concepto.includes('anticipo'))
+    );
+    
+    anticiposMovements.forEach(anticipo => {
+        allProductsData.push({
+            id: `anticipo-${anticipo.id}`,
+            folio: anticipo.folio,
+            fecha: new Date(anticipo.fecha).toLocaleDateString('es-ES'),
+            cita: anticipo.fechaCita ? new Date(anticipo.fechaCita).toLocaleDateString('es-ES') + ' ' + (anticipo.horaCita || '') : 'N/A',
+            descripcion: anticipo.concepto,
+            categoria: 'anticipo',
+            precio: anticipo.monto || 0,
+            status: anticipo.aplicado ? 'cancelled' : 'active'
+        });
+    });
+}
+
+// Ordenar tabla
+function sortTable(field) {
+    if (currentSortField === field) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortField = field;
+        currentSortDirection = 'asc';
+    }
+    
+    // Actualizar iconos de ordenamiento
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.textContent = '↕';
+    });
+    
+    const currentIcon = document.querySelector(`th[onclick="sortTable('${field}')"] .sort-icon`);
+    if (currentIcon) {
+        currentIcon.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
+    }
+    
+    renderUnifiedProductsTable();
+}
+
+// Editar producto unificado
+function editUnifiedProduct(id) {
+    if (id.startsWith('anticipo-')) {
+        // Manejar edición de anticipo
+        const anticipoId = id.replace('anticipo-', '');
+        const anticipo = movements.find(m => m.id == anticipoId);
+        if (anticipo) {
+            alert('La edición de anticipos se realiza desde el historial de ventas.');
+        }
+        return;
+    }
+    
+    // Manejar edición de producto regular
+    const product = products.find(p => p.id == id);
+    if (product) {
+        document.getElementById('p-id').value = product.id;
+        document.getElementById('p-name').value = product.name;
+        document.getElementById('p-type').value = product.type;
+        document.getElementById('p-price').value = product.price || '';
+        
+        // Mostrar/ocultar campos de anticipo
+        toggleAnticipoFields(product.type);
+    }
+}
+
+// Cambiar estado del producto
+async function toggleProductStatus(id) {
+    if (id.startsWith('anticipo-')) {
+        alert('El estado de los anticipos se maneja desde el sistema de ventas.');
+        return;
+    }
+    
+    const product = products.find(p => p.id == id);
+    if (!product) return;
+    
+    const newStatus = product.status === 'cancelled' ? 'active' : 'cancelled';
+    const actionText = newStatus === 'cancelled' ? 'cancelar' : 'reactivar';
+    
+    if (confirm(`¿Estás seguro de que quieres ${actionText} este producto?`)) {
+        try {
+            const response = await fetch(`/api/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...product,
+                    status: newStatus
+                })
+            });
+            
+            if (response.ok) {
+                product.status = newStatus;
+                loadUnifiedProductsData();
+                renderUnifiedProductsTable();
+            }
+        } catch (error) {
+            alert('Error de conexión al actualizar el producto.');
+        }
+    }
+}
+
+// Eliminar producto unificado
+async function deleteUnifiedProduct(id) {
+    if (id.startsWith('anticipo-')) {
+        alert('Los anticipos no se pueden eliminar desde aquí. Usa el historial de ventas.');
+        return;
+    }
+    
+    if (confirm('¿Estás seguro de que quieres eliminar este producto permanentemente?')) {
+        try {
+            const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                products = products.filter(p => p.id != id);
+                loadUnifiedProductsData();
+                renderUnifiedProductsTable();
+                renderProductTables(); // Actualizar también las tablas originales
+            }
+        } catch (error) {
+            alert('Error de conexión al eliminar el producto.');
+        }
+    }
+}
+
+// Mostrar/ocultar campos de anticipo
+function toggleAnticipoFields(type) {
+    const anticipoFields = document.getElementById('anticipo-fields');
+    if (anticipoFields) {
+        anticipoFields.style.display = type === 'anticipo' ? 'block' : 'none';
+    }
+}
+
+// Función para actualizar tabla unificada después de cambios
+function updateUnifiedProductsAfterChange() {
+    loadUnifiedProductsData();
+    renderUnifiedProductsTable();
+}
+
+// Inicializar controles de la tabla unificada
+function initializeUnifiedTable() {
+    // Verificar que los elementos existan antes de agregar listeners
+    const filterType = document.getElementById('filter-type');
+    const searchProducts = document.getElementById('search-products');
+    const productTypeSelect = document.getElementById('p-type');
+    
+    if (filterType) {
+        filterType.addEventListener('change', renderUnifiedProductsTable);
+    }
+    
+    if (searchProducts) {
+        searchProducts.addEventListener('input', renderUnifiedProductsTable);
+    }
+    
+    if (productTypeSelect) {
+        productTypeSelect.addEventListener('change', (e) => {
+            toggleAnticipoFields(e.target.value);
+        });
+    }
+    
+    // Solo cargar si hay datos disponibles
+    if (typeof products !== 'undefined' && typeof movements !== 'undefined') {
+        loadUnifiedProductsData();
+        renderUnifiedProductsTable();
+    }
+}
+
+// Exponer funciones globalmente para uso en onclick
+window.sortTable = sortTable;
+window.editUnifiedProduct = editUnifiedProduct;
+window.toggleProductStatus = toggleProductStatus;
+window.deleteUnifiedProduct = deleteUnifiedProduct;
 
 document.addEventListener('DOMContentLoaded', initializeApp);

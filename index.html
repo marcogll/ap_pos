@@ -417,22 +417,86 @@
     <!-- Pestaña de Productos -->
     <div id="tab-products" class="tab-content">
         <div class="section">
-            <h2>Gestión de Productos y Cursos</h2>
+            <h2>Gestión de Productos, Servicios y Anticipos</h2>
+            
+            <!-- Controles de filtrado y ordenamiento -->
+            <div class="filter-controls">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label>Filtrar por tipo:</label>
+                        <select id="filter-type">
+                            <option value="">Todos</option>
+                            <option value="service">Servicios</option>
+                            <option value="course">Cursos</option>
+                            <option value="anticipo">Anticipos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ordenar por:</label>
+                        <select id="sort-by">
+                            <option value="descripcion">Descripción</option>
+                            <option value="categoria">Categoría</option>
+                            <option value="fecha">Fecha</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Búsqueda:</label>
+                        <input type="text" id="search-products" placeholder="Buscar por descripción..." />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario para añadir/editar -->
             <div class="sub-section">
-                <h3>Añadir/Editar</h3>
+                <h3>Añadir/Editar Producto</h3>
                 <form id="formProduct">
                     <input type="hidden" id="p-id" />
                     <div class="form-grid">
-                        <label>Nombre:</label>
-                        <input type="text" id="p-name" required />
-                        <label>Tipo:</label>
+                        <label>Descripción:</label>
+                        <input type="text" id="p-name" required placeholder="Nombre del producto/servicio" />
+                        <label>Tipo/Categoría:</label>
                         <select id="p-type" required>
                             <option value="service">Servicio</option>
                             <option value="course">Curso</option>
+                            <option value="anticipo">Anticipo</option>
                         </select>
                         <label>Precio (MXN):</label>
-                        <input type="number" id="p-price" step="0.01" min="0" />
+                        <input type="number" id="p-price" step="0.01" min="0" placeholder="0.00" />
                     </div>
+                    
+                    <!-- Campos adicionales para anticipos -->
+                    <div id="anticipo-fields" class="form-grid" style="display: none;">
+                        <label>Fecha de cita:</label>
+                        <div class="date-time-container">
+                            <input type="number" id="p-cita-dia" min="1" max="31" placeholder="DD" class="date-field" />
+                            <span class="date-separator">/</span>
+                            <input type="number" id="p-cita-mes" min="1" max="12" placeholder="MM" class="date-field" />
+                            <span class="date-separator">/</span>
+                            <input type="number" id="p-cita-año" min="2024" max="2030" placeholder="AAAA" class="date-field-year" />
+                        </div>
+                        <label>Hora de cita:</label>
+                        <select id="p-hora-cita" class="time-select">
+                            <option value="">-- Seleccionar hora --</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="12:30">12:30 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="13:30">1:30 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="14:30">2:30 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="15:30">3:30 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="16:30">4:30 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                            <option value="17:30">5:30 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-actions">
                         <button type="submit">Guardar</button>
                         <button type="reset" id="btnCancelEditProduct" class="btn-danger">Cancelar</button>
@@ -442,31 +506,18 @@
 
             <hr class="section-divider">
 
+            <!-- Tabla unificada -->
             <div class="sub-section">
-                <h3>Servicios</h3>
+                <h3>Todos los Productos</h3>
                 <div class="table-wrapper">
-                    <table id="tblServices">
+                    <table id="tblAllProducts">
                         <thead>
                             <tr>
-                                <th>Nombre</th>
-                                <th>Precio</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <hr class="section-divider">
-
-            <div class="sub-section">
-                <h3>Cursos</h3>
-                <div class="table-wrapper">
-                    <table id="tblCourses">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
+                                <th onclick="sortTable('folio')">Folio <span class="sort-icon">↕</span></th>
+                                <th onclick="sortTable('fecha')">Fecha <span class="sort-icon">↕</span></th>
+                                <th onclick="sortTable('cita')">Cita <span class="sort-icon">↕</span></th>
+                                <th onclick="sortTable('descripcion')">Descripción <span class="sort-icon">↕</span></th>
+                                <th onclick="sortTable('categoria')">Categoría <span class="sort-icon">↕</span></th>
                                 <th>Precio</th>
                                 <th>Acciones</th>
                             </tr>
