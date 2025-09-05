@@ -1,5 +1,5 @@
 import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js?v=99.9';
+import { renderTicketAndPrint } from './print.js?v=101.0';
 
 // --- UTILITIES ---
 function escapeHTML(str) {
@@ -818,12 +818,15 @@ function renderTable() {
     tr.insertCell().textContent = Number(mov.monto).toFixed(2);
 
     const actionsCell = tr.insertCell();
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'action-btn';
-    deleteButton.dataset.id = mov.id;
-    deleteButton.dataset.action = 'delete';
-    deleteButton.textContent = 'Eliminar';
-    actionsCell.appendChild(deleteButton);
+    // Solo mostrar botón de eliminar para administradores
+    if (currentUser && currentUser.role === 'admin') {
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'action-btn';
+      deleteButton.dataset.id = mov.id;
+      deleteButton.dataset.action = 'delete';
+      deleteButton.textContent = 'Eliminar';
+      actionsCell.appendChild(deleteButton);
+    }
   });
 }
 
@@ -1594,11 +1597,16 @@ function handleTestTicket() {
 }
 
 function setupUIForRole(role) {
-    const dashboardTab = document.querySelector('[data-tab="dashboard"]');
-    const settingsTab = document.querySelector('[data-tab="settings"]');
+    console.log('SETUP UI FOR ROLE:', role);
+    
+    const dashboardTab = document.querySelector('[data-tab="tab-dashboard"]');
+    const settingsTab = document.querySelector('[data-tab="tab-settings"]');
     const userManagementSection = document.getElementById('user-management-section');
     const staffInput = document.getElementById('m-staff');
     const dbInfoIcon = document.getElementById('db-info-icon');
+    
+    console.log('Dashboard tab found:', !!dashboardTab);
+    console.log('Settings tab found:', !!settingsTab);
 
     if (role === 'admin') {
         if (dashboardTab) dashboardTab.style.display = 'block';
@@ -1617,8 +1625,16 @@ function setupUIForRole(role) {
             })
             .catch(err => console.error(err));
     } else {
-        if (dashboardTab) dashboardTab.style.display = 'block';
-        if (settingsTab) settingsTab.style.display = 'block';
+        // Usuario regular: NO acceso a Dashboard y Configuración
+        console.log('CONFIGURANDO PARA USER REGULAR - OCULTANDO TABS');
+        if (dashboardTab) {
+            dashboardTab.style.display = 'none';
+            console.log('Dashboard tab oculto');
+        }
+        if (settingsTab) {
+            settingsTab.style.display = 'none';
+            console.log('Settings tab oculto');
+        }
         if (userManagementSection) userManagementSection.style.display = 'none';
         if (dbInfoIcon) dbInfoIcon.style.display = 'none';
     }
@@ -1824,7 +1840,9 @@ async function initializeApp() {
     setupUIForRole(currentUser.role);
     
     console.log('Activating initial tab...');
-    activateTab('tab-dashboard');
+    // Usuario regular va a ventas, admin va a dashboard
+    const initialTab = currentUser.role === 'admin' ? 'tab-dashboard' : 'tab-ventas';
+    activateTab(initialTab);
 
     console.log('Activating client sub-tab...');
     activateClientSubTab('sub-tab-register');
