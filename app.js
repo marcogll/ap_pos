@@ -1,5 +1,5 @@
 import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js?v=101.0';
+import { renderTicketAndPrint } from './print.js?v=1757039367';
 
 // --- UTILITIES ---
 function escapeHTML(str) {
@@ -528,7 +528,7 @@ function formatDate(dateString) {
     return `${day}/${month}/${year}`;
 }
 
-const APP_VERSION = '1.3.7';
+const APP_VERSION = '1.4.0';
 
 // --- ESTADO Y DATOS ---
 const DEFAULT_SETTINGS = {
@@ -1841,7 +1841,7 @@ async function initializeApp() {
     
     console.log('Activating initial tab...');
     // Usuario regular va a ventas, admin va a dashboard
-    const initialTab = currentUser.role === 'admin' ? 'tab-dashboard' : 'tab-ventas';
+    const initialTab = currentUser.role === 'admin' ? 'tab-dashboard' : 'tab-movements';
     activateTab(initialTab);
 
     console.log('Activating client sub-tab...');

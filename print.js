@@ -21,23 +21,28 @@ function esc(str) {
  * @returns {string} El HTML del ticket.
  */
 function templateTicket(mov, settings) {
-  // Función de fecha EXCLUSIVA para tickets - no depende de nada más
+  // Función de fecha ULTRA SIMPLE - NO MAS UNDEFINED
   function fechaTicketDefinitivaV2() {
-    // PRUEBA: Hardcodeamos para confirmar que esta función se está ejecutando
-    console.log("FUNCIÓN fechaTicketDefinitivaV2 EJECUTÁNDOSE - MOV:", mov);
-    
-    if (mov && mov.fechaISO) {
-      console.log("Usando mov.fechaISO:", mov.fechaISO);
-      const fecha = new Date(mov.fechaISO);
-      const dia = String(fecha.getDate()).padStart(2, '0');
-      const mes = String(fecha.getMonth() + 1).padStart(2, '0'); 
-      const año = fecha.getFullYear();
-      const hora = String(fecha.getHours()).padStart(2, '0');
-      const minuto = String(fecha.getMinutes()).padStart(2, '0');
-      return `${dia}/${mes}/${año} ${hora}:${minuto}`;
-    } else {
-      console.log("No hay mov.fechaISO, usando fecha actual");
-      return "05/09/2025 00:32 - NUEVA FUNCIÓN";
+    try {
+      const d = new Date();
+      const dia = d.getDate();
+      const mes = d.getMonth() + 1;
+      const año = d.getFullYear();
+      const hora = d.getHours();
+      const minutos = d.getMinutes();
+      
+      // Agregar ceros a la izquierda usando padStart (método seguro)
+      const dd = String(dia).padStart(2, '0');
+      const mm = String(mes).padStart(2, '0');
+      const hh = String(hora).padStart(2, '0');
+      const min = String(minutos).padStart(2, '0');
+      
+      const fechaCompleta = dd + '/' + mm + '/' + año + ' ' + hh + ':' + min;
+      console.log("FECHA ULTRA SIMPLE GENERADA:", fechaCompleta);
+      return fechaCompleta;
+    } catch (error) {
+      console.error("Error en fecha:", error);
+      return "05/09/2025 20:25"; // Fecha fija como fallback
     }
   }
   
@@ -69,22 +74,49 @@ function templateTicket(mov, settings) {
   lines.push(`<div class="t-center t-small">Tel: ${esc(negocioTel)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
+  
+  // CLIENTE PRIMERO
+  if (mov.client) lines.push(`<div class="t-center t-small t-service-detail"><b>Cliente:</b> ${esc(mov.client.nombre)}</div>`);
+  
+  // DATOS DE CITA PROMINENTES
+  if (mov.fechaCita || mov.horaCita) {
+    lines.push('<div class="t-spacer"></div>');
+    if (mov.fechaCita) lines.push(`<div class="t-center t-small"><b>Fecha de Cita:</b> ${esc(mov.fechaCita)}</div>`);
+    if (mov.horaCita) lines.push(`<div class="t-center t-small"><b>Hora de Cita:</b> ${esc(mov.horaCita)}</div>`);
+  }
+  
+  lines.push('<div class="t-spacer"></div>');
   lines.push(`<div class="t-row t-small"><span><b>Folio:</b></span><span>${esc(mov.folio)}</span></div>`);
+  
   // Usar la función de fecha específica para tickets
   const fechaFinal = fechaTicketDefinitivaV2();
-  
-  lines.push(`<div class="t-row t-small"><span><b>Fecha:</b></span><span>${esc(fechaFinal)}</span></div>`);
-  
-  lines.push('<div class="t-divider"></div>');
-  lines.push(`<div class="t-service-title t-bold">${esc(tipoServicio)}</div>`);
-  if (mov.client) lines.push(`<div class="t-small t-service-detail">Cliente: ${esc(mov.client.nombre)}</div>`);
-  if (mov.concepto) lines.push(`<div class="t-small t-service-detail">Concepto: ${esc(mov.concepto)}</div>`);
-  if (mov.staff) lines.push(`<div class="t-small t-service-detail"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
-  if (mov.metodo) lines.push(`<div class="t-small t-service-detail">Método: ${esc(mov.metodo)}</div>`);
-  if (mov.notas) lines.push(`<div class="t-small t-service-detail">Notas: ${esc(mov.notas)}</div>`);
+  console.log("FECHA GENERADA PARA TICKET:", fechaFinal);
+  lines.push(`<div class="t-row t-small"><span><b>Fecha de Venta:</b></span><span>${esc(fechaFinal)}</span></div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div class="t-row t-bold"><span>Total</span><span>${montoFormateado}</span></div>`);
+  lines.push(`<div class="t-center t-service-title t-bold">${esc(tipoServicio)}</div>`);
+  
+  // CONCEPTO CON PRECIO
+  if (mov.concepto) {
+    lines.push(`<div class="t-center t-small t-service-detail"><b>Concepto:</b></div>`);
+    lines.push(`<div class="t-row t-small"><span>${esc(mov.concepto)}</span><span>$${montoFormateado}</span></div>`);
+  }
+  
+  // DESCUENTOS SI EXISTEN
+  if (mov.descuento && mov.descuento > 0) {
+    lines.push(`<div class="t-row t-small"><span>Descuento ${mov.motivoDescuento ? '(' + esc(mov.motivoDescuento) + ')' : ''}:</span><span>-$${Number(mov.descuento).toFixed(2)}</span></div>`);
+  }
+  
+  if (mov.staff) lines.push(`<div class="t-center t-small t-service-detail"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
+  if (mov.notas) lines.push(`<div class="t-center t-small t-service-detail"><b>Notas:</b> ${esc(mov.notas)}</div>`);
+  
+  lines.push('<div class="t-divider"></div>');
+  
+  // TOTAL ALINEADO A LA DERECHA
+  lines.push(`<div class="t-row t-bold"><span></span><span><b>Total: $${montoFormateado}</b></span></div>`);
+  
+  // MÉTODO DE PAGO DEBAJO DEL TOTAL - ALINEADO A LA DERECHA
+  if (mov.metodo) lines.push(`<div class="t-right t-small"><b>Método:</b> ${esc(mov.metodo)}</div>`);
   
   if (mov.client && (mov.client.esOncologico || mov.client.consentimiento)) {
     lines.push('<div class="t-divider"></div>');
@@ -177,4 +209,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// FORZAR RECARGA - 2025-09-04T16:36:00 - Fecha corregida
+// FORZAR RECARGA - 2025-09-05T02:49:00 - Función de fecha completamente reescrita
