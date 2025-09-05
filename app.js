@@ -528,7 +528,7 @@ function formatDate(dateString) {
     return `${day}/${month}/${year}`;
 }
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.6';
 
 // --- ESTADO Y DATOS ---
 const DEFAULT_SETTINGS = {
