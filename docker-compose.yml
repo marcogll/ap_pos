@@ -1,6 +1,6 @@
 services:
   ap-pos:
-    image: marcogll/ap_pos:1.4.0
+    image: marcogll/ap_pos:1.4.1
     container_name: ap-pos
     restart: unless-stopped
     ports:
