@@ -94,14 +94,8 @@
             <h3>Datos de la Cita</h3>
             <div class="form-row">
               <div class="form-group">
-                <label>Fecha</label>
-                <div class="date-time-container">
-                  <input type="number" id="m-cita-dia" min="1" max="31" placeholder="DD" class="date-field" />
-                  <span class="date-separator">/</span>
-                  <input type="number" id="m-cita-mes" min="1" max="12" placeholder="MM" class="date-field" />
-                  <span class="date-separator">/</span>
-                  <input type="number" id="m-cita-año" min="2024" max="2030" placeholder="AAAA" class="date-field-year" />
-                </div>
+                <label>Fecha de la Cita</label>
+                <input type="date" id="m-fecha-cita" class="date-picker" />
               </div>
               <div class="form-group">
                 <label>Hora</label>
@@ -125,6 +119,9 @@
                   <option value="17:30">5:30 PM</option>
                   <option value="18:00">6:00 PM</option>
                 </select>
+                <div id="time-availability-info" class="time-availability-info" style="display: none;">
+                  <span id="available-slots-count"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -419,32 +416,6 @@
         <div class="section">
             <h2>Gestión de Productos, Servicios y Anticipos</h2>
             
-            <!-- Controles de filtrado y ordenamiento -->
-            <div class="filter-controls">
-                <div class="filter-row">
-                    <div class="form-group">
-                        <label>Filtrar por tipo:</label>
-                        <select id="filter-type">
-                            <option value="">Todos</option>
-                            <option value="service">Servicios</option>
-                            <option value="course">Cursos</option>
-                            <option value="anticipo">Anticipos</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Ordenar por:</label>
-                        <select id="sort-by">
-                            <option value="descripcion">Descripción</option>
-                            <option value="categoria">Categoría</option>
-                            <option value="fecha">Fecha</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Búsqueda:</label>
-                        <input type="text" id="search-products" placeholder="Buscar por descripción..." />
-                    </div>
-                </div>
-            </div>
 
             <!-- Formulario para añadir/editar -->
             <div class="sub-section">
@@ -458,44 +429,11 @@
                         <select id="p-type" required>
                             <option value="service">Servicio</option>
                             <option value="course">Curso</option>
-                            <option value="anticipo">Anticipo</option>
                         </select>
                         <label>Precio (MXN):</label>
                         <input type="number" id="p-price" step="0.01" min="0" placeholder="0.00" />
                     </div>
                     
-                    <!-- Campos adicionales para anticipos -->
-                    <div id="anticipo-fields" class="form-grid" style="display: none;">
-                        <label>Fecha de cita:</label>
-                        <div class="date-time-container">
-                            <input type="number" id="p-cita-dia" min="1" max="31" placeholder="DD" class="date-field" />
-                            <span class="date-separator">/</span>
-                            <input type="number" id="p-cita-mes" min="1" max="12" placeholder="MM" class="date-field" />
-                            <span class="date-separator">/</span>
-                            <input type="number" id="p-cita-año" min="2024" max="2030" placeholder="AAAA" class="date-field-year" />
-                        </div>
-                        <label>Hora de cita:</label>
-                        <select id="p-hora-cita" class="time-select">
-                            <option value="">-- Seleccionar hora --</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="12:30">12:30 PM</option>
-                            <option value="13:00">1:00 PM</option>
-                            <option value="13:30">1:30 PM</option>
-                            <option value="14:00">2:00 PM</option>
-                            <option value="14:30">2:30 PM</option>
-                            <option value="15:00">3:00 PM</option>
-                            <option value="15:30">3:30 PM</option>
-                            <option value="16:00">4:00 PM</option>
-                            <option value="16:30">4:30 PM</option>
-                            <option value="17:00">5:00 PM</option>
-                            <option value="17:30">5:30 PM</option>
-                            <option value="18:00">6:00 PM</option>
-                        </select>
-                    </div>
                     
                     <div class="form-actions">
                         <button type="submit">Guardar</button>
@@ -508,16 +446,34 @@
 
             <!-- Tabla unificada -->
             <div class="sub-section">
-                <h3>Todos los Productos</h3>
+                <h3>Todos los Productos
+                    <button id="filter-toggle-btn" class="filter-toggle-btn" title="Filtros">
+                        <span class="material-icons-outlined">tune</span>
+                    </button>
+                </h3>
+                <p class="table-note">
+                    <strong>Nota:</strong> Esta tabla muestra solo productos reales (servicios y cursos). 
+                    Los anticipos se manejan únicamente en notas de ventas y en la app de citas.
+                </p>
                 <div class="table-wrapper">
                     <table id="tblAllProducts">
                         <thead>
                             <tr>
-                                <th onclick="sortTable('folio')">Folio <span class="sort-icon">↕</span></th>
-                                <th onclick="sortTable('fecha')">Fecha <span class="sort-icon">↕</span></th>
-                                <th onclick="sortTable('cita')">Cita <span class="sort-icon">↕</span></th>
-                                <th onclick="sortTable('descripcion')">Descripción <span class="sort-icon">↕</span></th>
-                                <th onclick="sortTable('categoria')">Categoría <span class="sort-icon">↕</span></th>
+                                <th class="sortable" data-field="folio">
+                                    Folio <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-field="fecha">
+                                    Fecha <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-field="cita">
+                                    Cita <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-field="descripcion">
+                                    Descripción <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-field="categoria">
+                                    Categoría <span class="sort-icon">↕</span>
+                                </th>
                                 <th>Precio</th>
                                 <th>Acciones</th>
                             </tr>
@@ -526,6 +482,49 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Filter Modal -->
+            <div id="filter-modal" class="filter-modal" style="display: none;">
+                <div class="filter-modal-content">
+                    <div class="filter-modal-header">
+                        <h4>Filtrar por...</h4>
+                        <button id="filter-modal-close" class="filter-modal-close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="filter-modal-body">
+                        <div class="filter-group">
+                            <label>Descripción</label>
+                            <input type="text" id="filter-description" placeholder="Buscar por descripción...">
+                        </div>
+                        <div class="filter-group">
+                            <label>Tipo</label>
+                            <select id="filter-category">
+                                <option value="">Todos</option>
+                                <option value="service">Servicios</option>
+                                <option value="course">Cursos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Fecha desde</label>
+                            <input type="date" id="filter-date-from">
+                        </div>
+                        <div class="filter-group">
+                            <label>Fecha hasta</label>
+                            <input type="date" id="filter-date-to">
+                        </div>
+                        <div class="filter-group">
+                            <label>Precio mínimo</label>
+                            <input type="number" id="filter-price-min" placeholder="0.00" step="0.01">
+                        </div>
+                        <div class="filter-group">
+                            <label>Precio máximo</label>
+                            <input type="number" id="filter-price-max" placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -630,6 +629,6 @@
   <div id="printArea" class="no-print"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
-  <script type="module" src="app.js?v=1.8"></script>
+  <script type="module" src="app.js?v=99.9"></script>
 </body>
 </html>

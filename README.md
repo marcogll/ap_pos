@@ -116,7 +116,8 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 - **Formato térmico 58mm**: Diseño específico para impresoras térmicas
 - **Información completa**: Productos, cantidades, descuentos y totales
 - **QR Code**: Para feedback de clientes
-- **Fechas corregidas**: Formato de fecha y hora preciso
+- **Fechas corregidas**: Formato DD/MM/YYYY HH:MM sin errores de "undefined"
+- **Etiquetas en negrita**: Folio y Fecha destacados visualmente
 
 ### ⚡ **Mejoras Técnicas**
 - **Cálculos en tiempo real**: Totales actualizados automáticamente

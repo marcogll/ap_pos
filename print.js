@@ -22,34 +22,23 @@ function esc(str) {
  */
 function templateTicket(mov, settings) {
   // Función de fecha EXCLUSIVA para tickets - no depende de nada más
-  function fechaParaTicketSolamente() {
-    console.log('>>> EJECUTANDO fechaParaTicketSolamente()');
+  function fechaTicketDefinitivaV2() {
+    // PRUEBA: Hardcodeamos para confirmar que esta función se está ejecutando
+    console.log("FUNCIÓN fechaTicketDefinitivaV2 EJECUTÁNDOSE - MOV:", mov);
     
-    // Crear fecha con zona horaria México directamente
-    const fechaObj = new Date();
-    console.log('>>> Objeto Date original:', fechaObj);
-    
-    // Obtener fecha en zona horaria México (UTC-6)
-    const fechaMexico = new Date(fechaObj.getTime() - (6 * 60 * 60 * 1000));
-    console.log('>>> Fecha México:', fechaMexico);
-    
-    // Obtener cada parte por separado
-    const año = fechaMexico.getUTCFullYear();
-    const mes = fechaMexico.getUTCMonth() + 1;
-    const día = fechaMexico.getUTCDate();
-    const hora = fechaMexico.getUTCHours();
-    const minuto = fechaMexico.getUTCMinutes();
-    
-    // Formatear cada número manualmente
-    const dStr = día.toString().padStart(2, '0');
-    const mStr = mes.toString().padStart(2, '0');
-    const hStr = hora.toString().padStart(2, '0');
-    const minStr = minuto.toString().padStart(2, '0');
-    
-    const fechaFinal = `${dStr}/${mStr}/${año} ${hStr}:${minStr}`;
-    console.log('>>> Fecha final:', fechaFinal);
-    
-    return fechaFinal;
+    if (mov && mov.fechaISO) {
+      console.log("Usando mov.fechaISO:", mov.fechaISO);
+      const fecha = new Date(mov.fechaISO);
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0'); 
+      const año = fecha.getFullYear();
+      const hora = String(fecha.getHours()).padStart(2, '0');
+      const minuto = String(fecha.getMinutes()).padStart(2, '0');
+      return `${dia}/${mes}/${año} ${hora}:${minuto}`;
+    } else {
+      console.log("No hay mov.fechaISO, usando fecha actual");
+      return "05/09/2025 00:32 - NUEVA FUNCIÓN";
+    }
   }
   
   const montoFormateado = Number(mov.monto).toFixed(2);
@@ -80,11 +69,11 @@ function templateTicket(mov, settings) {
   lines.push(`<div class="t-center t-small">Tel: ${esc(negocioTel)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div class="t-row t-small"><span>Folio:</span><span>${esc(mov.folio)}</span></div>`);
+  lines.push(`<div class="t-row t-small"><span><b>Folio:</b></span><span>${esc(mov.folio)}</span></div>`);
   // Usar la función de fecha específica para tickets
-  const fechaFinal = fechaParaTicketSolamente();
+  const fechaFinal = fechaTicketDefinitivaV2();
   
-  lines.push(`<div class="t-row t-small"><span>Fecha:</span><span>${esc(fechaFinal)}</span></div>`);
+  lines.push(`<div class="t-row t-small"><span><b>Fecha:</b></span><span>${esc(fechaFinal)}</span></div>`);
   
   lines.push('<div class="t-divider"></div>');
   lines.push(`<div class="t-service-title t-bold">${esc(tipoServicio)}</div>`);
@@ -187,3 +176,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// FORZAR RECARGA - 2025-09-04T16:36:00 - Fecha corregida

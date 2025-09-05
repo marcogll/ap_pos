@@ -1,5 +1,5 @@
 import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js?v=1.8';
+import { renderTicketAndPrint } from './print.js?v=99.9';
 
 // --- UTILITIES ---
 function escapeHTML(str) {
@@ -15,20 +15,104 @@ function escapeHTML(str) {
 }
 
 function construirFechaCita() {
-    const dia = document.getElementById('m-cita-dia').value;
-    const mes = document.getElementById('m-cita-mes').value;
-    const año = document.getElementById('m-cita-año').value;
+    const fechaPicker = document.getElementById('m-fecha-cita');
+    if (!fechaPicker || !fechaPicker.value) return '';
     
-    if (!dia || !mes || !año) {
-        return '';
+    // Convertir de formato ISO (YYYY-MM-DD) a formato DD/MM/YYYY
+    const dateParts = fechaPicker.value.split('-');
+    return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+}
+
+// Actualizar horarios disponibles basados en la fecha seleccionada
+function updateAvailableTimeSlots(selectedDate) {
+    const horaSelect = document.getElementById('m-hora-cita');
+    if (!horaSelect || !selectedDate) return;
+    
+    // Horarios base disponibles
+    const baseTimeSlots = [
+        { value: '10:00', label: '10:00 AM' },
+        { value: '10:30', label: '10:30 AM' },
+        { value: '11:00', label: '11:00 AM' },
+        { value: '11:30', label: '11:30 AM' },
+        { value: '12:00', label: '12:00 PM' },
+        { value: '12:30', label: '12:30 PM' },
+        { value: '13:00', label: '1:00 PM' },
+        { value: '13:30', label: '1:30 PM' },
+        { value: '14:00', label: '2:00 PM' },
+        { value: '14:30', label: '2:30 PM' },
+        { value: '15:00', label: '3:00 PM' },
+        { value: '15:30', label: '3:30 PM' },
+        { value: '16:00', label: '4:00 PM' },
+        { value: '16:30', label: '4:30 PM' },
+        { value: '17:00', label: '5:00 PM' },
+        { value: '17:30', label: '5:30 PM' },
+        { value: '18:00', label: '6:00 PM' }
+    ];
+    
+    // Convertir fecha del date picker (YYYY-MM-DD) al formato usado en la base (DD/MM/YYYY)
+    const dateParts = selectedDate.split('-');
+    const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+    
+    // Obtener citas ya programadas para esta fecha
+    const existingAppointments = movements
+        .filter(mov => {
+            // Comparar tanto con formato ISO como DD/MM/YYYY
+            return mov.fechaCita === selectedDate || mov.fechaCita === formattedDate;
+        })
+        .map(mov => mov.horaCita)
+        .filter(hora => hora);
+    
+    // Filtrar horarios disponibles
+    const availableSlots = baseTimeSlots.filter(slot => 
+        !existingAppointments.includes(slot.value)
+    );
+    
+    // Limpiar y repoblar selector
+    const currentValue = horaSelect.value;
+    horaSelect.innerHTML = '<option value="">-- Seleccionar hora --</option>';
+    
+    availableSlots.forEach(slot => {
+        const option = document.createElement('option');
+        option.value = slot.value;
+        option.textContent = slot.label;
+        horaSelect.appendChild(option);
+    });
+    
+    // Si había un horario ocupado seleccionado, mostrarlo como no disponible
+    if (currentValue && existingAppointments.includes(currentValue)) {
+        const busyOption = document.createElement('option');
+        busyOption.value = currentValue;
+        busyOption.textContent = `${currentValue} (Ocupado)`;
+        busyOption.disabled = true;
+        busyOption.style.color = '#dc3545';
+        horaSelect.appendChild(busyOption);
+        horaSelect.value = currentValue;
     }
     
-    // Formatear con ceros a la izquierda
-    const diaStr = dia.padStart(2, '0');
-    const mesStr = mes.padStart(2, '0');
+    // Mostrar contador de horarios disponibles
+    const availableCount = availableSlots.length;
+    const totalCount = baseTimeSlots.length;
+    console.log(`Horarios disponibles para ${selectedDate}: ${availableCount}/${totalCount}`);
     
-    // Retornar en formato YYYY-MM-DD para compatibilidad
-    return `${año}-${mesStr}-${diaStr}`;
+    // Actualizar indicador visual de disponibilidad
+    const availabilityInfo = document.getElementById('time-availability-info');
+    const availabilityCount = document.getElementById('available-slots-count');
+    
+    if (availabilityInfo && availabilityCount) {
+        if (availableCount > 0) {
+            availabilityCount.textContent = `✅ ${availableCount} de ${totalCount} horarios disponibles`;
+            availabilityInfo.style.display = 'block';
+            availabilityInfo.style.backgroundColor = availableCount > totalCount * 0.5 ? '#e8f5e8' : '#fff3cd';
+            availabilityInfo.style.borderColor = availableCount > totalCount * 0.5 ? '#c3e6cb' : '#ffeaa7';
+            availabilityInfo.style.color = availableCount > totalCount * 0.5 ? '#155724' : '#856404';
+        } else {
+            availabilityCount.textContent = '❌ No hay horarios disponibles para esta fecha';
+            availabilityInfo.style.display = 'block';
+            availabilityInfo.style.backgroundColor = '#f8d7da';
+            availabilityInfo.style.borderColor = '#f5c6cb';
+            availabilityInfo.style.color = '#721c24';
+        }
+    }
 }
 
 // Sistema dinámico de productos y descuentos
@@ -210,36 +294,8 @@ function addCurrentProduct() {
     
     // Manejar anticipos de forma especial
     if (categoriaSelect.value === 'anticipo') {
-        let anticipoAmount = prompt('Ingresa el monto del anticipo:', '');
-        if (anticipoAmount === null) return; // Usuario canceló
-        
-        anticipoAmount = parseFloat(anticipoAmount);
-        if (isNaN(anticipoAmount) || anticipoAmount <= 0) {
-            alert('Por favor ingresa un monto válido para el anticipo');
-            return;
-        }
-
-        const clienteInput = document.getElementById('m-cliente');
-        const clienteName = clienteInput.value.trim();
-        let anticipoName = 'Anticipo';
-        if (clienteName) {
-            anticipoName = `Anticipo - ${clienteName}`;
-        }
-        
-        const existingIndex = selectedProducts.findIndex(p => p.name === anticipoName);
-        
-        if (existingIndex >= 0) {
-            selectedProducts[existingIndex].quantity += quantity;
-            selectedProducts[existingIndex].price += anticipoAmount; // Acumular el monto
-        } else {
-            selectedProducts.push({
-                id: 'anticipo-' + Date.now(),
-                name: anticipoName,
-                price: anticipoAmount,
-                quantity: quantity,
-                type: 'anticipo'
-            });
-        }
+        handleAnticipoSelection();
+        return;
     } else {
         // Manejar servicios y cursos como antes
         const productData = products.find(p => p.name === articuloSelect.value && p.type === categoriaSelect.value);
@@ -288,14 +344,19 @@ function renderSelectedProducts() {
         return;
     }
 
-    const html = selectedProducts.map(product => `
-        <div class="product-item">
-            <span class="product-item-name">${escapeHTML(product.name)} <small>(${product.type === 'service' ? 'Servicio' : 'Curso'})</small></span>
-            <span class="product-item-quantity">${product.quantity}x</span>
-            <span class="product-item-price">$${(product.price * product.quantity).toFixed(2)}</span>
-            <button type="button" class="btn-remove" onclick="removeProduct('${escapeHTML(product.name)}')">×</button>
-        </div>
-    `).join('');
+    const html = selectedProducts.map(product => {
+        // Para anticipos no agregar el tipo en small porque ya está en el nombre
+        const typeLabel = product.type === 'anticipo' ? '' : ` <small>(${product.type === 'service' ? 'Servicio' : 'Curso'})</small>`;
+        
+        return `
+            <div class="product-item">
+                <span class="product-item-name">${escapeHTML(product.name)}${typeLabel}</span>
+                <span class="product-item-quantity">${product.quantity}x</span>
+                <span class="product-item-price">$${(product.price * product.quantity).toFixed(2)}</span>
+                <button type="button" class="btn-remove" onclick="removeProduct('${escapeHTML(product.name)}')">×</button>
+            </div>
+        `;
+    }).join('');
 
     container.innerHTML = html;
 }
@@ -864,10 +925,10 @@ function populateArticuloDropdown(category) {
         articuloSelect.innerHTML = `<option value="">-- Seleccionar ${placeholder} --</option>`;
         
         if (category === 'anticipo') {
-            // Para anticipos, permitir búsqueda automática o ingreso manual
+            // Para anticipos, solo una opción para ingresar monto
             const option = document.createElement('option');
             option.value = 'Anticipo';
-            option.textContent = 'Anticipo - $0.00 (Ingreso manual)';
+            option.textContent = 'Anticipo (Monto personalizado)';
             articuloSelect.appendChild(option);
         } else {
             const items = products.filter(p => p.type === category);
@@ -1723,6 +1784,14 @@ async function initializeApp() {
     showAddCourseModal(clientId);
   });
 
+  // Event listener para el date picker de citas
+  const fechaCitaPicker = document.getElementById('m-fecha-cita');
+  if (fechaCitaPicker) {
+    fechaCitaPicker.addEventListener('change', function() {
+      updateAvailableTimeSlots(this.value);
+    });
+  }
+
   Promise.all([
     fetch('/api/settings').then(res => res.json()).catch(() => DEFAULT_SETTINGS),
     fetch('/api/movements').then(res => res.json()).catch(() => []),
@@ -1788,29 +1857,14 @@ function generateProductFolio(type) {
     const timestamp = Date.now().toString().slice(-6);
     const typeCode = {
         'service': 'SRV',
-        'course': 'CRS',
-        'anticipo': 'ANT'
+        'course': 'CRS'
     };
     return `${folioPrefix}-${typeCode[type]}-${timestamp}`;
 }
 
-// Construir fecha de cita para anticipos
-function construirFechaCitaProducto() {
-    const dia = document.getElementById('p-cita-dia').value;
-    const mes = document.getElementById('p-cita-mes').value;
-    const año = document.getElementById('p-cita-año').value;
-    const hora = document.getElementById('p-hora-cita').value;
-    
-    if (!dia || !mes || !año) {
-        return '';
-    }
-    
-    const diaStr = dia.padStart(2, '0');
-    const mesStr = mes.padStart(2, '0');
-    const horaStr = hora || '00:00';
-    
-    return `${diaStr}/${mesStr}/${año} ${horaStr}`;
-}
+// Los anticipos ya no son productos - se manejan solo en ventas
+
+// Los anticipos usan prompts nativos mejorados con emojis
 
 // Renderizar tabla unificada
 function renderUnifiedProductsTable() {
@@ -1823,17 +1877,56 @@ function renderUnifiedProductsTable() {
     // Aplicar filtros
     let filteredData = [...allProductsData];
     
-    const filterType = document.getElementById('filter-type')?.value;
-    if (filterType) {
-        filteredData = filteredData.filter(item => item.categoria === filterType);
-    }
-
-    const searchTerm = document.getElementById('search-products')?.value?.toLowerCase();
-    if (searchTerm) {
+    // Filtro por descripción
+    const filterDescription = document.getElementById('filter-description')?.value?.toLowerCase();
+    if (filterDescription) {
         filteredData = filteredData.filter(item => 
-            item.descripcion.toLowerCase().includes(searchTerm) ||
-            item.categoria.toLowerCase().includes(searchTerm)
+            item.descripcion.toLowerCase().includes(filterDescription)
         );
+    }
+    
+    // Filtro por tipo de producto (servicios y cursos únicamente)
+    const filterCategory = document.getElementById('filter-category')?.value;
+    if (filterCategory) {
+        filteredData = filteredData.filter(item => item.categoria === filterCategory);
+    }
+    
+    // Filtro por rango de fechas
+    const filterDateFrom = document.getElementById('filter-date-from')?.value;
+    const filterDateTo = document.getElementById('filter-date-to')?.value;
+    if (filterDateFrom || filterDateTo) {
+        filteredData = filteredData.filter(item => {
+            if (!item.fecha || item.fecha === 'N/A') return true;
+            
+            // Convertir fecha del item a formato comparable
+            const itemDate = new Date(item.fecha.split('/').reverse().join('-'));
+            
+            if (filterDateFrom) {
+                const fromDate = new Date(filterDateFrom);
+                if (itemDate < fromDate) return false;
+            }
+            
+            if (filterDateTo) {
+                const toDate = new Date(filterDateTo);
+                if (itemDate > toDate) return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    // Filtro por rango de precios
+    const filterPriceMin = document.getElementById('filter-price-min')?.value;
+    const filterPriceMax = document.getElementById('filter-price-max')?.value;
+    if (filterPriceMin || filterPriceMax) {
+        filteredData = filteredData.filter(item => {
+            const price = parseFloat(item.precio) || 0;
+            
+            if (filterPriceMin && price < parseFloat(filterPriceMin)) return false;
+            if (filterPriceMax && price > parseFloat(filterPriceMax)) return false;
+            
+            return true;
+        });
     }
 
     // Ordenar datos
@@ -1890,8 +1983,7 @@ function renderUnifiedProductsTable() {
 function getCategoryName(categoria) {
     const names = {
         'service': 'Servicio',
-        'course': 'Curso',
-        'anticipo': 'Anticipo'
+        'course': 'Curso'
     };
     return names[categoria] || categoria;
 }
@@ -1900,7 +1992,8 @@ function getCategoryName(categoria) {
 function loadUnifiedProductsData() {
     allProductsData = [];
     
-    // Agregar productos existentes (servicios y cursos)
+    // Agregar solo productos existentes (servicios y cursos)
+    // Los anticipos NO se incluyen aquí - solo se manejan en ventas/notas
     products.forEach(product => {
         allProductsData.push({
             id: product.id,
@@ -1911,24 +2004,6 @@ function loadUnifiedProductsData() {
             categoria: product.type,
             precio: product.price || 0,
             status: product.status || 'active'
-        });
-    });
-    
-    // Agregar anticipos desde movimientos
-    const anticiposMovements = movements.filter(m => 
-        m.concepto && (m.concepto.includes('Anticipo') || m.concepto.includes('anticipo'))
-    );
-    
-    anticiposMovements.forEach(anticipo => {
-        allProductsData.push({
-            id: `anticipo-${anticipo.id}`,
-            folio: anticipo.folio,
-            fecha: new Date(anticipo.fecha).toLocaleDateString('es-ES'),
-            cita: anticipo.fechaCita ? new Date(anticipo.fechaCita).toLocaleDateString('es-ES') + ' ' + (anticipo.horaCita || '') : 'N/A',
-            descripcion: anticipo.concepto,
-            categoria: 'anticipo',
-            precio: anticipo.monto || 0,
-            status: anticipo.aplicado ? 'cancelled' : 'active'
         });
     });
 }
@@ -1947,7 +2022,7 @@ function sortTable(field) {
         icon.textContent = '↕';
     });
     
-    const currentIcon = document.querySelector(`th[onclick="sortTable('${field}')"] .sort-icon`);
+    const currentIcon = document.querySelector(`th[data-field="${field}"] .sort-icon`);
     if (currentIcon) {
         currentIcon.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
     }
@@ -1955,19 +2030,51 @@ function sortTable(field) {
     renderUnifiedProductsTable();
 }
 
-// Editar producto unificado
-function editUnifiedProduct(id) {
-    if (id.startsWith('anticipo-')) {
-        // Manejar edición de anticipo
-        const anticipoId = id.replace('anticipo-', '');
-        const anticipo = movements.find(m => m.id == anticipoId);
-        if (anticipo) {
-            alert('La edición de anticipos se realiza desde el historial de ventas.');
-        }
-        return;
+// Inicializar filter modal
+function initializeFilterModal() {
+    const filterToggleBtn = document.getElementById('filter-toggle-btn');
+    const filterModal = document.getElementById('filter-modal');
+    const filterModalClose = document.getElementById('filter-modal-close');
+    
+    if (filterToggleBtn && filterModal) {
+        filterToggleBtn.addEventListener('click', () => {
+            filterModal.style.display = 'flex';
+        });
     }
     
-    // Manejar edición de producto regular
+    if (filterModalClose && filterModal) {
+        filterModalClose.addEventListener('click', () => {
+            filterModal.style.display = 'none';
+        });
+    }
+    
+    // Cerrar modal al hacer click fuera de él
+    if (filterModal) {
+        filterModal.addEventListener('click', (e) => {
+            if (e.target === filterModal) {
+                filterModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Aplicar filtros desde el modal
+    const filterInputs = filterModal?.querySelectorAll('input, select');
+    if (filterInputs) {
+        filterInputs.forEach(input => {
+            input.addEventListener('change', applyFiltersFromModal);
+            input.addEventListener('input', applyFiltersFromModal);
+        });
+    }
+}
+
+// Aplicar filtros desde el modal
+function applyFiltersFromModal() {
+    renderUnifiedProductsTable();
+}
+
+// Editar producto unificado
+function editUnifiedProduct(id) {
+    // Solo editar productos reales (servicios y cursos)
     const product = products.find(p => p.id == id);
     if (product) {
         document.getElementById('p-id').value = product.id;
@@ -1975,18 +2082,12 @@ function editUnifiedProduct(id) {
         document.getElementById('p-type').value = product.type;
         document.getElementById('p-price').value = product.price || '';
         
-        // Mostrar/ocultar campos de anticipo
-        toggleAnticipoFields(product.type);
+        // Ya no hay campos de anticipo que mostrar
     }
 }
 
 // Cambiar estado del producto
 async function toggleProductStatus(id) {
-    if (id.startsWith('anticipo-')) {
-        alert('El estado de los anticipos se maneja desde el sistema de ventas.');
-        return;
-    }
-    
     const product = products.find(p => p.id == id);
     if (!product) return;
     
@@ -2017,11 +2118,6 @@ async function toggleProductStatus(id) {
 
 // Eliminar producto unificado
 async function deleteUnifiedProduct(id) {
-    if (id.startsWith('anticipo-')) {
-        alert('Los anticipos no se pueden eliminar desde aquí. Usa el historial de ventas.');
-        return;
-    }
-    
     if (confirm('¿Estás seguro de que quieres eliminar este producto permanentemente?')) {
         try {
             const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
@@ -2037,13 +2133,7 @@ async function deleteUnifiedProduct(id) {
     }
 }
 
-// Mostrar/ocultar campos de anticipo
-function toggleAnticipoFields(type) {
-    const anticipoFields = document.getElementById('anticipo-fields');
-    if (anticipoFields) {
-        anticipoFields.style.display = type === 'anticipo' ? 'block' : 'none';
-    }
-}
+// Los campos de anticipo fueron removidos - ya no son productos
 
 // Función para actualizar tabla unificada después de cambios
 function updateUnifiedProductsAfterChange() {
@@ -2053,24 +2143,23 @@ function updateUnifiedProductsAfterChange() {
 
 // Inicializar controles de la tabla unificada
 function initializeUnifiedTable() {
+    // Inicializar filter modal
+    initializeFilterModal();
+    
+    // Inicializar sorting para columnas
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const field = header.getAttribute('data-field');
+            if (field) {
+                sortTable(field);
+            }
+        });
+    });
+    
     // Verificar que los elementos existan antes de agregar listeners
-    const filterType = document.getElementById('filter-type');
-    const searchProducts = document.getElementById('search-products');
     const productTypeSelect = document.getElementById('p-type');
     
-    if (filterType) {
-        filterType.addEventListener('change', renderUnifiedProductsTable);
-    }
-    
-    if (searchProducts) {
-        searchProducts.addEventListener('input', renderUnifiedProductsTable);
-    }
-    
-    if (productTypeSelect) {
-        productTypeSelect.addEventListener('change', (e) => {
-            toggleAnticipoFields(e.target.value);
-        });
-    }
+    // Ya no se necesita manejar campos de anticipo en productos
     
     // Solo cargar si hay datos disponibles
     if (typeof products !== 'undefined' && typeof movements !== 'undefined') {
@@ -2081,8 +2170,76 @@ function initializeUnifiedTable() {
 
 // Exponer funciones globalmente para uso en onclick
 window.sortTable = sortTable;
+window.initializeFilterModal = initializeFilterModal;
 window.editUnifiedProduct = editUnifiedProduct;
 window.toggleProductStatus = toggleProductStatus;
 window.deleteUnifiedProduct = deleteUnifiedProduct;
+
+function handleAnticipoSelection() {
+    // 1. Primero pedir el monto del anticipo
+    let anticipoAmount = prompt('💰 ANTICIPO\n\nIngresa el monto del anticipo:', '');
+    if (anticipoAmount === null) return; // Usuario canceló
+    
+    anticipoAmount = parseFloat(anticipoAmount);
+    if (isNaN(anticipoAmount) || anticipoAmount <= 0) {
+        alert('⚠️ Por favor ingresa un monto válido para el anticipo');
+        return;
+    }
+    
+    // 2. Preguntar tipo con confirm para hacer más fácil la selección
+    const esServicio = confirm('🎯 TIPO DE ANTICIPO\n\n¿Es para un SERVICIO?\n\n✅ Aceptar = Servicio\n❌ Cancelar = Curso');
+    
+    const productType = esServicio ? 'service' : 'course';
+    const tipoTexto = esServicio ? 'servicio' : 'curso';
+    
+    // 3. Obtener productos según el tipo
+    const availableProducts = products.filter(p => p.type === productType);
+    
+    if (availableProducts.length === 0) {
+        alert(`❌ No hay ${tipoTexto}s disponibles`);
+        return;
+    }
+    
+    // 4. Crear lista numerada para selección (solo nombres, sin precios)
+    let productOptions = `🛍️ SELECCIONAR ${tipoTexto.toUpperCase()}\n\n`;
+    availableProducts.forEach((product, index) => {
+        productOptions += `${index + 1}. ${product.name}\n`;
+    });
+    
+    const selectedIndex = prompt(productOptions + '\n📝 Escribe el número de tu elección:');
+    if (selectedIndex === null) return; // Usuario canceló
+    
+    const productIndex = parseInt(selectedIndex) - 1;
+    
+    if (isNaN(productIndex) || productIndex < 0 || productIndex >= availableProducts.length) {
+        alert('❌ Selección inválida. Intenta de nuevo.');
+        return;
+    }
+    
+    const selectedProduct = availableProducts[productIndex];
+    const typeLabel = productType === 'course' ? 'Curso' : 'Servicio';
+    
+    // 5. Crear nombre del anticipo para el ticket (tipo completo en paréntesis)
+    const anticipoName = `Anticipo ${selectedProduct.name} $${parseFloat(anticipoAmount).toFixed(2)} (${typeLabel})`;
+    
+    // 6. Agregar a productos seleccionados
+    selectedProducts.push({
+        id: 'anticipo-' + Date.now(),
+        name: anticipoName,
+        price: anticipoAmount,
+        quantity: 1, // Los anticipos siempre son cantidad 1
+        type: 'anticipo',
+        productName: selectedProduct.name,
+        productType: productType
+        // No incluir originalPrice para evitar confusión en dashboard
+    });
+    
+    renderSelectedProducts();
+    calculateTotals();
+    showDynamicSections();
+    
+    // Mensaje de confirmación
+    alert(`✅ ANTICIPO AGREGADO\n\n${anticipoName}`);
+}
 
 document.addEventListener('DOMContentLoaded', initializeApp);
