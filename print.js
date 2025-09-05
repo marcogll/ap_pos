@@ -21,29 +21,22 @@ function esc(str) {
  * @returns {string} El HTML del ticket.
  */
 function templateTicket(mov, settings) {
-  // Función de fecha ULTRA SIMPLE - NO MAS UNDEFINED
-  function fechaTicketDefinitivaV2() {
-    try {
-      const d = new Date();
-      const dia = d.getDate();
-      const mes = d.getMonth() + 1;
-      const año = d.getFullYear();
-      const hora = d.getHours();
-      const minutos = d.getMinutes();
-      
-      // Agregar ceros a la izquierda usando padStart (método seguro)
-      const dd = String(dia).padStart(2, '0');
-      const mm = String(mes).padStart(2, '0');
-      const hh = String(hora).padStart(2, '0');
-      const min = String(minutos).padStart(2, '0');
-      
-      const fechaCompleta = dd + '/' + mm + '/' + año + ' ' + hh + ':' + min;
-      console.log("FECHA ULTRA SIMPLE GENERADA:", fechaCompleta);
-      return fechaCompleta;
-    } catch (error) {
-      console.error("Error en fecha:", error);
-      return "05/09/2025 20:25"; // Fecha fija como fallback
-    }
+  // FUNCIÓN DE FECHA DEFINITIVA - NO MAS UNDEFINED NUNCA MAS
+  function generarFechaTicketFINAL() {
+    // Crear nueva fecha DIRECTAMENTE
+    const fecha = new Date();
+    
+    // Obtener componentes de fecha SIN VARIABLES INTERMEDIAS
+    const dia = fecha.getDate().toString().padStart(2, '0');
+    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+    const año = fecha.getFullYear().toString();
+    const hora = fecha.getHours().toString().padStart(2, '0');
+    const minutos = fecha.getMinutes().toString().padStart(2, '0');
+    
+    // Construir fecha final DIRECTAMENTE
+    const resultado = `${dia}/${mes}/${año} ${hora}:${minutos}`;
+    console.log("FECHA FINAL DEFINITIVA GENERADA:", resultado);
+    return resultado;
   }
   
   const montoFormateado = Number(mov.monto).toFixed(2);
@@ -89,7 +82,7 @@ function templateTicket(mov, settings) {
   lines.push(`<div class="t-row t-small"><span><b>Folio:</b></span><span>${esc(mov.folio)}</span></div>`);
   
   // Usar la función de fecha específica para tickets
-  const fechaFinal = fechaTicketDefinitivaV2();
+  const fechaFinal = generarFechaTicketFINAL();
   console.log("FECHA GENERADA PARA TICKET:", fechaFinal);
   lines.push(`<div class="t-row t-small"><span><b>Fecha de Venta:</b></span><span>${esc(fechaFinal)}</span></div>`);
   
@@ -209,4 +202,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// FORZAR RECARGA - 2025-09-05T02:49:00 - Función de fecha completamente reescrita
+// FORZAR RECARGA - 2025-09-05T20:43:00 - NUEVA FUNCIÓN generarFechaTicketFINAL

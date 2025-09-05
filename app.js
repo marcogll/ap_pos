@@ -1,5 +1,5 @@
 import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js?v=1757039367';
+import { renderTicketAndPrint } from './print.js?v=1757039801';
 
 // --- UTILITIES ---
 function escapeHTML(str) {
