@@ -73,8 +73,12 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
    # Edita el archivo .env con una clave secreta segura
    ```
 
-3. **Construye y levanta** el contenedor:
+3. **Levanta** el contenedor:
    ```bash
+   # Usar imagen desde Docker Hub (recomendado para producción)
+   docker-compose up -d
+   
+   # O construir localmente (para desarrollo)
    docker-compose up -d --build
    ```
 
