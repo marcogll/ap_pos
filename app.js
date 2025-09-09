@@ -2315,6 +2315,10 @@ async function loadProductsByCategories() {
         
         const allProducts = await response.json();
         
+        // Update global products array
+        products = allProducts;
+        console.log('Products loaded:', products.length);
+        
         // Group products by category
         const productsByCategory = {};
         allProducts.forEach(product => {
@@ -2325,9 +2329,12 @@ async function loadProductsByCategories() {
             productsByCategory[category].push(product);
         });
         
-        // Populate each category
-        renderProductsInCategory('Vanity Lashes', productsByCategory['Vanity Lashes'] || []);
-        renderProductsInCategory('PMU Services', productsByCategory['PMU Services'] || []);
+        // Log categories found
+        console.log('Categories found:', Object.keys(productsByCategory));
+        
+        // Populate each category - map to correct category names
+        renderProductsInCategory('Pestañas', productsByCategory['Pestañas'] || []);
+        renderProductsInCategory('Microblading', productsByCategory['Microblading'] || []);
         renderProductsInCategory('Uñas', productsByCategory['Uñas'] || []);
         
     } catch (error) {
@@ -2338,10 +2345,10 @@ async function loadProductsByCategories() {
 function renderProductsInCategory(categoryName, products) {
     let containerId;
     switch(categoryName) {
-        case 'Vanity Lashes':
+        case 'Pestañas':
             containerId = 'pestanas-products';
             break;
-        case 'PMU Services':
+        case 'Microblading':
             containerId = 'microblading-products';
             break;
         case 'Uñas':
