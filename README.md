@@ -122,6 +122,10 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 - **Fechas robustas**: Validación completa de fechas con padding automático
 - **Navegación fluida**: Mejor experiencia de usuario en productos y formularios
 
+> **💡 Tip para limpiar formularios**: 
+> - **Mac**: Presiona `Cmd + Shift + R` para refrescar y limpiar formularios
+> - **Windows/Linux**: Presiona `Ctrl + Shift + R` para refrescar y limpiar formularios
+
 ---
 
 ## Historial - Versión 1.5.0
