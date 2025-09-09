@@ -185,6 +185,14 @@ function initializeApplication() {
                     }
                 });
 
+                // Verificar si hay productos, si no, importar los productos por defecto
+                db.get("SELECT COUNT(*) as count FROM products", [], (err, row) => {
+                    if (!err && row.count === 0) {
+                        console.log("No products found, importing default products...");
+                        importDefaultProducts();
+                    }
+                });
+
                 // Una vez completada toda la inicialización de la DB, iniciar el servidor
                 startServer();
             });
@@ -192,6 +200,67 @@ function initializeApplication() {
     });
 }
 
+function importDefaultProducts() {
+    const defaultProducts = [
+        // Servicios principales con orden correcto
+        { name: "Extensión de Pestañas (Clean Girl)", type: "service", price: 1570, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 1 },
+        { name: "Extensión de Pestañas (Elegant Lashes)", type: "service", price: 950, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 10 },
+        { name: "Extensión de Pestañas (Mystery Lashes)", type: "service", price: 1210, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 20 },
+        { name: "Extensión de Pestañas (Seduction Lashes)", type: "service", price: 1580, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 30 },
+        
+        // Retoques agrupados
+        { name: "Elegant Lashes - Retoque (1ª Semana)", type: "service", price: 320, category: "Pestañas", subcategory: "Retoques - Elegant Lashes", custom_price: false, sort_order: 11 },
+        { name: "Elegant Lashes - Retoque (2ª Semana)", type: "service", price: 420, category: "Pestañas", subcategory: "Retoques - Elegant Lashes", custom_price: false, sort_order: 12 },
+        { name: "Elegant Lashes - Retoque (3ª Semana)", type: "service", price: 530, category: "Pestañas", subcategory: "Retoques - Elegant Lashes", custom_price: false, sort_order: 13 },
+        
+        { name: "Mystery Lashes - Retoque (1ª Semana)", type: "service", price: 330, category: "Pestañas", subcategory: "Retoques - Mystery Lashes", custom_price: false, sort_order: 21 },
+        { name: "Mystery Lashes - Retoque (2ª Semana)", type: "service", price: 430, category: "Pestañas", subcategory: "Retoques - Mystery Lashes", custom_price: false, sort_order: 22 },
+        { name: "Mystery Lashes - Retoque (3ª Semana)", type: "service", price: 540, category: "Pestañas", subcategory: "Retoques - Mystery Lashes", custom_price: false, sort_order: 23 },
+        
+        { name: "Seduction Lashes - Retoque (1ª Semana)", type: "service", price: 340, category: "Pestañas", subcategory: "Retoques - Seduction Lashes", custom_price: false, sort_order: 31 },
+        { name: "Seduction Lashes - Retoque (2ª Semana)", type: "service", price: 440, category: "Pestañas", subcategory: "Retoques - Seduction Lashes", custom_price: false, sort_order: 32 },
+        { name: "Seduction Lashes - Retoque (3ª Semana)", type: "service", price: 550, category: "Pestañas", subcategory: "Retoques - Seduction Lashes", custom_price: false, sort_order: 33 },
+        
+        // Otros servicios
+        { name: "Lash Lifting", type: "service", price: 740, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 100 },
+        { name: "Retiro de pestañas", type: "service", price: 140, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 101 },
+        { name: "Tinte para pestañas (Lash Lifting)", type: "service", price: 210, category: "Pestañas", subcategory: "Servicios", custom_price: false, sort_order: 102 },
+        
+        // Microblading
+        { name: "Retoque Vanity Brows (Microblading)", type: "service", price: 3680, category: "Microblading", subcategory: "Servicios", custom_price: false, sort_order: 200 },
+        { name: "Vanity Lips", type: "service", price: 5250, category: "Microblading", subcategory: "Servicios", custom_price: false, sort_order: 201 },
+        { name: "Microblading Vanity Brows", type: "service", price: 5250, category: "Microblading", subcategory: "Servicios", custom_price: false, sort_order: 202 },
+        { name: "Powder Brows", type: "service", price: 3680, category: "Microblading", subcategory: "Servicios", custom_price: false, sort_order: 203 },
+        
+        // Nail Art
+        { name: "Nail Art", type: "service", price: null, category: "Uñas", subcategory: "Servicios", custom_price: true, sort_order: 300 }
+    ];
+    
+    const stmt = db.prepare(`INSERT INTO products 
+        (name, type, price, category, subcategory, custom_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    
+    defaultProducts.forEach(product => {
+        stmt.run([
+            product.name,
+            product.type,
+            product.price,
+            product.category,
+            product.subcategory,
+            product.custom_price ? 1 : 0,
+            product.sort_order
+        ], function(err) {
+            if (err) {
+                console.error(`Error inserting product ${product.name}:`, err.message);
+            }
+        });
+    });
+    
+    stmt.finalize(function(err) {
+        if (!err) {
+            console.log(`✅ Default products imported successfully (${defaultProducts.length} products)`);
+        }
+    });
+}
 
 function startServer() {
     // --- SETUP & AUTH MIDDLEWARE ---
@@ -530,29 +599,37 @@ function startServer() {
         db.serialize(() => {
             db.run("BEGIN TRANSACTION");
             
-            const stmt = db.prepare(`INSERT OR REPLACE INTO products 
-                (name, type, price, category, subcategory, custom_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-            
-            products.forEach(product => {
-                stmt.run([
-                    product.name,
-                    product.type || 'service',
-                    product.price || null,
-                    product.category || null,
-                    product.subcategory || null,
-                    product.custom_price ? 1 : 0,
-                    product.sort_order || 0
-                ]);
-            });
-            
-            stmt.finalize();
-            
-            db.run("COMMIT", function(err) {
-                if (err) {
+            // Primero limpiar productos existentes para evitar duplicados
+            db.run("DELETE FROM products WHERE 1=1", function(deleteErr) {
+                if (deleteErr) {
                     db.run("ROLLBACK");
-                    return res.status(500).json({ error: err.message });
+                    return res.status(500).json({ error: deleteErr.message });
                 }
-                res.json({ message: 'Products imported successfully', count: products.length });
+                
+                const stmt = db.prepare(`INSERT INTO products 
+                    (name, type, price, category, subcategory, custom_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+                
+                products.forEach(product => {
+                    stmt.run([
+                        product.name,
+                        product.type || 'service',
+                        product.price || null,
+                        product.category || null,
+                        product.subcategory || null,
+                        product.custom_price ? 1 : 0,
+                        product.sort_order || 0
+                    ]);
+                });
+                
+                stmt.finalize();
+                
+                db.run("COMMIT", function(commitErr) {
+                    if (commitErr) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: commitErr.message });
+                    }
+                    res.json({ message: 'Products imported successfully', count: products.length });
+                });
             });
         });
     });

@@ -2300,10 +2300,10 @@ function toggleCategory(event) {
     categorySection.classList.toggle('collapsed');
     
     if (categorySection.classList.contains('collapsed')) {
-        productsGrid.style.display = 'none';
+        if (productsGrid) productsGrid.style.display = 'none';
         toggle.textContent = '▶';
     } else {
-        productsGrid.style.display = 'block';
+        if (productsGrid) productsGrid.style.display = 'block';
         toggle.textContent = '▼';
     }
 }
