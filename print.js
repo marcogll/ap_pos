@@ -4,7 +4,7 @@
  * @returns {string} El string escapado.
  */
 function esc(str) {
-  return String(str || '').replace(/[&<>"'/]/g, c => ({
+  return String(str || '').replace(/[&<>"']/g, c => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -68,30 +68,40 @@ function templateTicket(mov, settings) {
   
   lines.push('<div class="t-divider"></div>');
   
-  // CLIENTE PRIMERO
-  if (mov.client) lines.push(`<div class="t-center t-small t-service-detail"><b>Cliente:</b> ${esc(mov.client.nombre)}</div>`);
   
-  // DATOS DE CITA PROMINENTES
-  if (mov.fechaCita || mov.horaCita) {
-    lines.push('<div class="t-spacer"></div>');
-    if (mov.fechaCita) lines.push(`<div class="t-center t-small"><b>Fecha de Cita:</b> ${esc(mov.fechaCita)}</div>`);
-    if (mov.horaCita) lines.push(`<div class="t-center t-small"><b>Hora de Cita:</b> ${esc(mov.horaCita)}</div>`);
+  // INFORMACIÓN COMPACTA DEL CLIENTE Y CITA
+  if (mov.client) lines.push(`<div class="t-left t-small"><b>Cliente:</b> ${esc(mov.client.nombre)}</div>`);
+  
+  lines.push('<div class="t-spacer"></div>');
+  
+  // INFO EN LÍNEAS COMPACTAS  
+  if (mov.fechaCita && mov.horaCita) {
+    lines.push(`<div class="t-left t-small"><b>Cita:</b> ${esc(mov.fechaCita)} - ${esc(mov.horaCita)}</div>`);
+  } else {
+    if (mov.fechaCita) lines.push(`<div class="t-left t-small"><b>Fecha de Cita:</b> ${esc(mov.fechaCita)}</div>`);
+    if (mov.horaCita) lines.push(`<div class="t-left t-small"><b>Hora de Cita:</b> ${esc(mov.horaCita)}</div>`);
   }
   
   lines.push('<div class="t-spacer"></div>');
-  lines.push(`<div class="t-row t-small"><span><b>Folio:</b></span><span>${esc(mov.folio)}</span></div>`);
+  lines.push(`<div class="t-left t-small"><b>Folio:</b> ${esc(mov.folio)}</div>`);
   
-  // Usar la función de fecha específica para tickets
-  const fechaFinal = generarFechaTicketFINAL();
-  console.log("FECHA GENERADA PARA TICKET:", fechaFinal);
-  lines.push(`<div class="t-row t-small"><span><b>Fecha de Venta:</b></span><span>${esc(fechaFinal)}</span></div>`);
+  
+  // Fecha de Venta
+  const fechaMovimiento = new Date(mov.fechaISO);
+  const dia = fechaMovimiento.getDate().toString().padStart(2, '0');
+  const mes = (fechaMovimiento.getMonth() + 1).toString().padStart(2, '0');
+  const año = fechaMovimiento.getFullYear().toString();
+  const hora = fechaMovimiento.getHours().toString().padStart(2, '0');
+  const minutos = fechaMovimiento.getMinutes().toString().padStart(2, '0');
+  const fechaFinal = `${dia}/${mes}/${año} ${hora}:${minutos}`;
+  lines.push(`<div class="t-left t-small"><b>Fecha de Venta:</b> ${esc(fechaFinal)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
-  lines.push(`<div class="t-center t-service-title t-bold">${esc(tipoServicio)}</div>`);
+  lines.push(`<div class="t-left t-service-title t-bold">${esc(tipoServicio)}</div>`);
   
   // CONCEPTO CON PRECIO
   if (mov.concepto) {
-    lines.push(`<div class="t-center t-small t-service-detail"><b>Concepto:</b></div>`);
+    lines.push(`<div class="t-left t-small t-service-detail"><b>Concepto:</b></div>`);
     lines.push(`<div class="t-row t-small"><span>${esc(mov.concepto)}</span><span>$${montoFormateado}</span></div>`);
   }
   
@@ -126,7 +136,7 @@ function templateTicket(mov, settings) {
       
       // Mostrar comentario del descuento si existe
       if (discountInfo.reason && discountInfo.reason.trim()) {
-        lines.push(`<div class="t-center t-small t-service-detail"><b>Motivo:</b> ${esc(discountInfo.reason)}</div>`);
+        lines.push(`<div class="t-left t-small t-service-detail"><b>Motivo:</b> ${esc(discountInfo.reason)}</div>`);
       }
     } else {
       // Fallback para formato anterior
@@ -134,16 +144,18 @@ function templateTicket(mov, settings) {
     }
   }
   
-  if (mov.staff) lines.push(`<div class="t-center t-small t-service-detail"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
-  if (mov.notas) lines.push(`<div class="t-center t-small t-service-detail"><b>Notas:</b> ${esc(mov.notas)}</div>`);
+  if (mov.notas) lines.push(`<div class="t-left t-small t-service-detail"><b>Notas:</b> ${esc(mov.notas)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
   
-  // TOTAL ALINEADO A LA DERECHA
-  lines.push(`<div class="t-row t-bold"><span></span><span><b>Total: $${montoFormateado}</b></span></div>`);
+  // TOTAL ALINEADO A LA IZQUIERDA
+  lines.push(`<div class="t-left t-bold t-total-large"><b>Total: $${montoFormateado}</b></div>`);
   
-  // MÉTODO DE PAGO DEBAJO DEL TOTAL - ALINEADO A LA DERECHA
-  if (mov.metodo) lines.push(`<div class="t-right t-small"><b>Método:</b> ${esc(mov.metodo)}</div>`);
+  // MÉTODO DE PAGO DEBAJO DEL TOTAL - ALINEADO A LA IZQUIERDA
+  if (mov.metodo) lines.push(`<div class="t-left t-small"><b>Método:</b> ${esc(mov.metodo)}</div>`);
+  
+  // TE ATENDIÓ DEBAJO DEL MÉTODO DE PAGO
+  if (mov.staff) lines.push(`<div class="t-left t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
   
   if (mov.client && (mov.client.esOncologico || mov.client.consentimiento)) {
     lines.push('<div class="t-divider"></div>');
@@ -236,4 +248,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// FORZAR RECARGA - 2025-09-05T20:43:00 - NUEVA FUNCIÓN generarFechaTicketFINAL
+// FORZAR RECARGA - 2025-09-09T21:33:00 - TODO ALINEADO A LA IZQUIERDA

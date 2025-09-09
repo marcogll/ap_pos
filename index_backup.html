@@ -4,19 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ale Ponce | AlMa</title>
-  <!-- Favicons -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/src/favicon/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon/favicon-16x16.png">
-  <link rel="manifest" href="/src/favicon/site.webmanifest">
-  <link rel="icon" href="/src/favicon/favicon.ico">
+  <!-- Favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23444' d='M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V6h16v12zM6 10h2v4H6zm3 0h2v4H9zm3 0h2v4h-2zm3 0h2v4h-2z'/%3E%3C/svg%3E">
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet">
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=1757039804" />
+  <link rel="stylesheet" href="styles.css?v=1757039067" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -84,14 +80,7 @@
 
     <!-- Pestaña de Movimientos/Recibos -->
     <div id="tab-movements" class="tab-content">
-      <div class="sub-tabs">
-        <button type="button" class="sub-tab-link active" data-subtab="sub-tab-ventas">💰 Ventas</button>
-        <button type="button" class="sub-tab-link" data-subtab="sub-tab-tickets">🎫 Tickets</button>
-      </div>
-
-      <!-- Sub-Pestaña de Ventas -->
-      <div id="sub-tab-ventas" class="sub-tab-content active">
-        <div class="sales-container">
+      <div class="sales-container">
         <!-- Header -->
         <div class="sales-header">
           <h2>💰 Nueva Venta</h2>
@@ -108,7 +97,7 @@
             <div class="client-selector">
               <div class="form-group modern-input">
                 <label>👤 Cliente</label>
-                <input type="text" id="m-cliente" list="client-list" autocomplete="off" placeholder="Buscar o crear cliente... (opcional)" />
+                <input type="text" id="m-cliente" list="client-list" required autocomplete="off" placeholder="Buscar o crear cliente..." />
                 <datalist id="client-list"></datalist>
               </div>
             </div>
@@ -117,24 +106,24 @@
             <div class="categories-container">
               <h3>Selecciona tus servicios</h3>
               
-              <!-- Vanity Lashes -->
-              <div class="category-section" data-category="Vanity Lashes">
+              <!-- Pestañas -->
+              <div class="category-section" data-category="Pestañas">
                 <div class="category-header">
                   <span class="category-icon">👁️</span>
-                  <h4>Vanity Lashes</h4>
-                  <button class="category-toggle">▶</button>
+                  <h4>Pestañas</h4>
+                  <button class="category-toggle">▼</button>
                 </div>
                 <div class="products-grid" id="pestanas-products">
                   <!-- Los productos se cargarán dinámicamente aquí -->
                 </div>
               </div>
 
-              <!-- PMU Services -->
-              <div class="category-section" data-category="PMU Services">
+              <!-- Microblading -->
+              <div class="category-section" data-category="Microblading">
                 <div class="category-header">
                   <span class="category-icon">✏️</span>
-                  <h4>PMU Services</h4>
-                  <button class="category-toggle">▶</button>
+                  <h4>Microblading & Cejas</h4>
+                  <button class="category-toggle">▼</button>
                 </div>
                 <div class="products-grid" id="microblading-products">
                   <!-- Los productos se cargarán dinámicamente aquí -->
@@ -146,28 +135,10 @@
                 <div class="category-header">
                   <span class="category-icon">💅</span>
                   <h4>Nail Art</h4>
-                  <button class="category-toggle">▶</button>
+                  <button class="category-toggle">▼</button>
                 </div>
                 <div class="products-grid" id="unas-products">
                   <!-- Los productos se cargarán dinámicamente aquí -->
-                </div>
-              </div>
-
-              <!-- Anticipos -->
-              <div class="category-section" data-category="Anticipos">
-                <div class="category-header">
-                  <span class="category-icon">💰</span>
-                  <h4>Anticipos</h4>
-                  <button class="category-toggle">▶</button>
-                </div>
-                <div class="anticipos-grid" id="anticipos-products">
-                  <div class="anticipo-form">
-                    <div class="anticipo-input-group">
-                      <input type="number" id="anticipo-amount" min="1" placeholder="Cantidad" />
-                      <input type="text" id="anticipo-comment" placeholder="Comentario (opcional)" />
-                      <button class="btn-add-anticipo" onclick="addAnticipo()">Agregar</button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -210,15 +181,6 @@
                   </div>
                 </div>
                 <input type="text" id="discount-reason" placeholder="Motivo del descuento (opcional)" disabled class="modern-input" />
-                
-                <!-- Checkbox de confirmación para anticipo manual -->
-                <div id="anticipo-manual-confirmation" style="display: none; margin-top: 10px;">
-                  <label class="checkbox-container">
-                    <input type="checkbox" id="confirm-anticipo-manual">
-                    <span class="checkmark"></span>
-                    <span class="checkbox-text">✅ Confirmo que el anticipo existe y fue dado por la cliente</span>
-                  </label>
-                </div>
               </div>
             </div>
 
@@ -301,27 +263,6 @@
                     <span>Transferencia</span>
                   </div>
                 </label>
-                <label class="payment-option">
-                  <input type="radio" name="m-metodo" value="Otros" />
-                  <div class="payment-card">
-                    <span class="payment-icon">💼</span>
-                    <span>Otros</span>
-                  </div>
-                </label>
-                <label class="payment-option">
-                  <input type="radio" name="m-metodo" value="Interno" />
-                  <div class="payment-card">
-                    <span class="payment-icon">🏢</span>
-                    <span>Interno</span>
-                  </div>
-                </label>
-                <label class="payment-option">
-                  <input type="radio" name="m-metodo" value="GiftCard" />
-                  <div class="payment-card">
-                    <span class="payment-icon">🎁</span>
-                    <span>GiftCard</span>
-                  </div>
-                </label>
               </div>
             </div>
 
@@ -335,12 +276,14 @@
             <form id="formMove" class="checkout-form">
               <input type="hidden" id="m-monto" />
               <input type="hidden" id="m-concepto" />
-              <input type="hidden" id="m-staff" />
-              <input type="hidden" id="m-metodo" value="Efectivo" />
               <div class="action-buttons">
                 <button type="submit" class="btn-checkout">
                   <span class="btn-icon">🎫</span>
                   <span>Generar Venta</span>
+                </button>
+                <button type="reset" class="btn-clear">
+                  <span class="btn-icon">🗑️</span>
+                  <span>Limpiar</span>
                 </button>
               </div>
             </form>
@@ -348,32 +291,192 @@
           </div> <!-- fin checkout-panel -->
         </div> <!-- fin sales-layout -->
       </div> <!-- fin sales-container -->
-      </div> <!-- fin sub-tab-ventas -->
 
-      <!-- Sub-Pestaña de Tickets -->
-      <div id="sub-tab-tickets" class="sub-tab-content">
-        <div class="section">
-          <h2>🎫 Historial de Tickets y Movimientos</h2>
-          <button id="btnExport" class="btn-secondary">Exportar a CSV</button>
-          <div class="table-wrapper">
-            <table id="tblMoves">
-              <thead>
-                <tr>
-                  <th>Folio</th>
-                  <th>Fecha</th>
-                  <th>Cita</th>
-                  <th>Cliente</th>
-                  <th>Servicio</th>
-                  <th>Monto</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+      <!-- Sección de Movimientos Recientes -->
+      <div class="section">
+        <h2>Movimientos Recientes</h2>
+        <button id="btnExport" class="btn-secondary">Exportar a CSV</button>
+        <div class="table-wrapper">
+          <table id="tblMoves">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fecha de la Cita</label>
+                <input type="date" id="m-fecha-cita" class="date-picker" />
+              </div>
+              <div class="form-group">
+                <label>Hora</label>
+                <select id="m-hora-cita" class="time-select">
+                  <option value="">-- Seleccionar hora --</option>
+                  <option value="10:00">10:00 AM</option>
+                  <option value="10:30">10:30 AM</option>
+                  <option value="11:00">11:00 AM</option>
+                  <option value="11:30">11:30 AM</option>
+                  <option value="12:00">12:00 PM</option>
+                  <option value="12:30">12:30 PM</option>
+                  <option value="13:00">1:00 PM</option>
+                  <option value="13:30">1:30 PM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="14:30">2:30 PM</option>
+                  <option value="15:00">3:00 PM</option>
+                  <option value="15:30">3:30 PM</option>
+                  <option value="16:00">4:00 PM</option>
+                  <option value="16:30">4:30 PM</option>
+                  <option value="17:00">5:00 PM</option>
+                  <option value="17:30">5:30 PM</option>
+                  <option value="18:00">6:00 PM</option>
+                </select>
+                <div id="time-availability-info" class="time-availability-info" style="display: none;">
+                  <span id="available-slots-count"></span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div> <!-- fin sub-tab-tickets -->
 
+          <!-- Venta -->
+          <div class="form-section">
+            <h3>Venta</h3>
+            <div class="products-container">
+              <div class="product-selector">
+                <select id="m-categoria" required>
+                  <option value="">-- Seleccione tipo --</option>
+                  <option value="service">Servicio</option>
+                  <option value="course">Curso</option>
+                  <option value="anticipo">Anticipo</option>
+                </select>
+                <select id="m-articulo" class="product-select">
+                  <option value="">-- Primero seleccione tipo --</option>
+                </select>
+                <input type="number" id="product-quantity" min="1" value="1" class="quantity-input" placeholder="Cant." />
+                <button type="button" id="add-product-btn" class="btn-add">Agregar</button>
+              </div>
+              <div id="selected-products" class="selected-products"></div>
+            </div>
+          </div>
+
+          <!-- Descuentos -->
+          <div class="form-section discount-section">
+            <div class="discount-header">
+              <input type="checkbox" id="discount-toggle" class="discount-checkbox">
+              <label for="discount-toggle" class="discount-label">
+                <span class="material-icons-outlined discount-icon">percent</span>
+                Descuentos y Anticipos
+              </label>
+            </div>
+            <div class="discount-container" id="discount-container" style="display: none;">
+              <div class="discount-grid">
+                <div class="form-group">
+                  <label>Tipo de descuento</label>
+                  <select id="discount-type">
+                    <option value="">Sin descuento</option>
+                    <option value="percentage">Porcentaje (%)</option>
+                    <option value="amount">Cantidad fija ($)</option>
+                    <option value="anticipo">💰 Aplicar Anticipo</option>
+                    <option value="warrior">🎗️ Vanity (100%)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Valor del descuento</label>
+                  <div class="input-with-symbol">
+                    <input type="number" id="discount-value" min="0" step="0.01" placeholder="0" disabled />
+                    <span class="input-symbol" id="discount-symbol">%</span>
+                  </div>
+                </div>
+                <div class="form-group full-width-discount">
+                  <label>Motivo del descuento</label>
+                  <input type="text" id="discount-reason" placeholder="Ej: Cliente frecuente, promoción especial..." disabled />
+                </div>
+              </div>
+              <div class="discount-preview" id="discount-preview" style="display: none;">
+                <div class="discount-preview-item">
+                  <span>Descuento aplicado:</span>
+                  <span id="discount-preview-amount" class="discount-amount">$0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Anticipos Disponibles -->
+          <div class="form-section anticipos-section" id="anticipos-section" style="display: none;">
+            <h4>💰 Anticipos Disponibles</h4>
+            <div id="anticipos-disponibles" class="anticipos-container">
+              <!-- Los anticipos se cargarán dinámicamente -->
+            </div>
+          </div>
+
+          <!-- Método de Pago y Detalles -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Método de Pago *</label>
+              <select id="m-metodo" required>
+                <option value="">-- Seleccione método de pago --</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Depósito">Depósito</option>
+                <option value="Giftcard">Giftcard</option>
+                <option value="Interno">Interno</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Atendió</label>
+              <input type="text" id="m-staff" readonly />
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notas</label>
+            <textarea id="m-notas" rows="2" placeholder="Notas adicionales..."></textarea>
+          </div>
+
+          <!-- Totales -->
+          <div class="totals-section">
+            <div class="totals-row">
+              <span>Subtotal:</span>
+              <span id="subtotal-display">$0.00</span>
+            </div>
+            <div class="totals-row" id="discount-display" style="display: none;">
+              <span>Descuento:</span>
+              <span id="discount-amount-display">-$0.00</span>
+            </div>
+            <div class="totals-row total-final">
+              <span>Total:</span>
+              <span id="total-display">$0.00</span>
+            </div>
+          </div>
+
+
+          <!-- Campos ocultos para compatibilidad -->
+          <input type="hidden" id="m-monto" />
+          <input type="hidden" id="m-concepto" />
+
+          <div class="form-actions-modern">
+            <button type="submit" class="btn-primary-large">Generar Venta y Ticket</button>
+            <button type="reset" class="btn-secondary-large">Limpiar Formulario</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="section">
+        <h2>Movimientos Recientes</h2>
+        <button id="btnExport" class="btn-secondary">Exportar a CSV</button>
+        <div class="table-wrapper">
+          <table id="tblMoves">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Cita</th>
+                <th>Cliente</th>
+                <th>Servicio</th>
+                <th>Monto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Pestaña de Clientes -->
@@ -542,7 +645,7 @@
                     <div class="form-actions">
                         <button type="submit">Guardar</button>
                         <button type="reset" id="btnCancelEditProduct" class="btn-danger">Cancelar</button>
-                        <button type="button" id="btnImportProducts" class="btn-secondary" onclick="importProductsFromJSON()">
+                        <button type="button" id="btnImportProducts" class="btn-secondary" onclick="importProductsFromJSON()" style="display: none;">
                             📥 Importar Productos JSON
                         </button>
                     </div>
@@ -768,6 +871,6 @@
   <div id="printArea" class="no-print"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
-  <script type="module" src="app.js?v=1757462000"></script>
+  <script type="module" src="app.js?v=1757039803"></script>
 </body>
 </html>

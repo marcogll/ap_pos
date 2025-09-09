@@ -1,4 +1,4 @@
-import { renderTicketAndPrint } from './print.js?v=1757039803';
+import { renderTicketAndPrint } from './print.js?v=1757454000';
 
 // --- GLOBAL VARIABLES ---
 const defaultSettings = {
@@ -43,7 +43,16 @@ function construirFechaCita() {
     
     // Convertir de formato ISO (YYYY-MM-DD) a formato DD/MM/YYYY
     const dateParts = fechaPicker.value.split('-');
-    return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+    if (dateParts.length !== 3) return '';
+    
+    const year = dateParts[0];
+    const month = dateParts[1];
+    const day = dateParts[2];
+    
+    // Validar que todas las partes existan
+    if (!year || !month || !day) return '';
+    
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
 }
 
 // Actualizar horarios disponibles basados en la fecha seleccionada
@@ -2312,6 +2321,19 @@ function toggleCategory(event) {
     }
 }
 
+function collapseAllCategories() {
+    const categorySections = document.querySelectorAll('.category-section');
+    categorySections.forEach(section => {
+        const productsGrid = section.querySelector('.products-grid');
+        const toggle = section.querySelector('.category-toggle');
+        if (productsGrid && toggle) {
+            productsGrid.style.display = 'none';
+            toggle.textContent = '▶';
+            section.classList.add('collapsed');
+        }
+    });
+}
+
 async function loadProductsByCategories() {
     try {
         const response = await fetch('/api/products');
@@ -2451,6 +2473,9 @@ function addProductToCart(productId) {
     
     updateCartDisplay();
     calculateTotals();
+    
+    // Auto-collapse all categories after adding product
+    collapseAllCategories();
 }
 
 function removeProductFromCart(productId) {
@@ -3168,5 +3193,6 @@ function addAnticipo() {
     // Show confirmation
     alert(`✅ ANTICIPO AGREGADO\n\n${anticipoName}: $${amount.toFixed(2)}`);
 }
+
 
 document.addEventListener('DOMContentLoaded', initializeApp);
