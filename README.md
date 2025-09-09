@@ -94,33 +94,31 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 - Los datos se mantienen entre reinicios y actualizaciones del contenedor
 - Para más información sobre Docker, consulta [DOCKER.md](./DOCKER.md)
 
-## Novedades de la Versión 1.3.5
+## Novedades de la Versión 1.5.0
 
-### 🚀 **Nueva Interfaz de Ventas**
-- **Formulario modernizado**: Diseño más intuitivo y profesional
-- **Múltiples productos**: Agrega varios servicios/cursos en una sola venta
-- **Sistema de cantidades**: Especifica la cantidad de cada producto
+### 🎫 **Reorganización de Interface**
+- **Subpestañas en Ventas**: Nueva estructura con "💰 Ventas" y "🎫 Tickets"  
+- **Dashboard limpio**: Movida sección de movimientos a subpestaña de Tickets
+- **Navegación mejorada**: Interfaz más organizada y lógica
 
-### 💰 **Sistema de Descuentos Avanzado**
-- **Interfaz colapsable**: Sección de descuentos elegante y fácil de usar
-- **Dos tipos de descuento**: Por porcentaje (%) o monto fijo ($)
-- **Motivo del descuento**: Registro del motivo para auditoría
-- **Preview en tiempo real**: Ve el descuento aplicado instantáneamente
+### 💳 **Sistema de Anticipos Avanzado**
+- **Anticipos manuales**: Aplicar anticipos no registrados con confirmación
+- **Checkbox de seguridad**: Confirmación obligatoria para anticipos manuales
+- **Integración completa**: Anticipos se aplican como descuentos automáticamente
+- **Control de duplicación**: Sistema previene aplicar el mismo anticipo múltiples veces
 
-### 📅 **Gestión de Citas Mejorada**
-- **Campos de fecha intuitivos**: DD/MM/AAAA más fácil de usar
-- **Horarios preconfigurados**: Selección rápida de horas disponibles
-- **Integración con ventas**: Cita programada directamente al crear la venta
+### 👥 **Gestión de Clientes Mejorada**
+- **Público General**: Sistema automático para ventas sin cliente específico
+- **Campo opcional**: Cliente ya no es obligatorio en ventas
+- **Tickets genéricos**: Soporte para ventas a público general
 
-### 🧾 **Tickets Optimizados**
-- **Formato térmico 58mm**: Diseño específico para impresoras térmicas
-- **Información completa**: Productos, cantidades, descuentos y totales
-- **QR Code**: Para feedback de clientes
-- **Fechas corregidas**: Formato DD/MM/YYYY HH:MM sin errores de "undefined"
-- **Etiquetas en negrita**: Folio y Fecha destacados visualmente
+### 🎨 **Mejoras Visuales**
+- **Header sólido**: Eliminado gradiente por color sólido negro
+- **Precios alineados**: Grid layout mejorado para mejor presentación
+- **Orden de servicios**: Clean Girl → Elegant → Mystery → Seduction con sus retoques
+- **Interfaz consistente**: Colores y estilos uniformes
 
-### ⚡ **Mejoras Técnicas**
-- **Cálculos en tiempo real**: Totales actualizados automáticamente
-- **Validaciones mejoradas**: Mejor control de errores
-- **Base de datos optimizada**: Persistencia de datos mejorada
-- **API REST**: Migración completa de localStorage a servidor
+### ⚡ **Optimizaciones Técnicas**
+- **Base de datos mejorada**: Campo sort_order para control de ordenamiento
+- **Subpestañas funcionales**: JavaScript para navegación entre secciones
+- **Validaciones reforzadas**: Mejor control de formularios y datos

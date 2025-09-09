@@ -97,7 +97,41 @@ function templateTicket(mov, settings) {
   
   // DESCUENTOS SI EXISTEN
   if (mov.descuento && mov.descuento > 0) {
-    lines.push(`<div class="t-row t-small"><span>Descuento ${mov.motivoDescuento ? '(' + esc(mov.motivoDescuento) + ')' : ''}:</span><span>-$${Number(mov.descuento).toFixed(2)}</span></div>`);
+    if (mov.discountInfo) {
+      // Mostrar información detallada del descuento
+      const discountInfo = mov.discountInfo;
+      let descriptionText = '';
+      let amountText = `-$${Number(mov.descuento).toFixed(2)}`;
+      
+      if (discountInfo.type === 'anticipo') {
+        // Distinguir entre anticipo registrado y manual
+        if (discountInfo.anticipo && discountInfo.anticipo.manual) {
+          descriptionText = `Anticipo manual aplicado (${discountInfo.anticipo.comentario})`;
+        } else {
+          descriptionText = `Anticipo aplicado ${discountInfo.anticipo ? `(${discountInfo.anticipo.folio})` : ''}`;
+        }
+        amountText = `-$${Number(mov.descuento).toFixed(2)} (${discountInfo.percentage.toFixed(1)}%)`;
+      } else if (discountInfo.type === 'warrior') {
+        descriptionText = 'Descuento Vanity (100%)';
+        amountText = `-$${Number(mov.descuento).toFixed(2)} (${discountInfo.percentage.toFixed(1)}%)`;
+      } else if (discountInfo.type === 'percentage') {
+        descriptionText = `Descuento (${discountInfo.value}%)`;
+        amountText = `-$${Number(mov.descuento).toFixed(2)} (${discountInfo.percentage.toFixed(1)}%)`;
+      } else if (discountInfo.type === 'amount') {
+        descriptionText = `Descuento ($${discountInfo.value})`;
+        amountText = `-$${Number(mov.descuento).toFixed(2)} (${discountInfo.percentage.toFixed(1)}%)`;
+      }
+      
+      lines.push(`<div class="t-row t-small"><span>${descriptionText}:</span><span>${amountText}</span></div>`);
+      
+      // Mostrar comentario del descuento si existe
+      if (discountInfo.reason && discountInfo.reason.trim()) {
+        lines.push(`<div class="t-center t-small t-service-detail"><b>Motivo:</b> ${esc(discountInfo.reason)}</div>`);
+      }
+    } else {
+      // Fallback para formato anterior
+      lines.push(`<div class="t-row t-small"><span>Descuento ${mov.motivoDescuento ? '(' + esc(mov.motivoDescuento) + ')' : ''}:</span><span>-$${Number(mov.descuento).toFixed(2)}</span></div>`);
+    }
   }
   
   if (mov.staff) lines.push(`<div class="t-center t-small t-service-detail"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);

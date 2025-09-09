@@ -1,5 +1,28 @@
-import { load, save, remove, KEY_DATA, KEY_SETTINGS, KEY_CLIENTS } from './storage.js';
-import { renderTicketAndPrint } from './print.js?v=1757039801';
+import { renderTicketAndPrint } from './print.js?v=1757039803';
+
+// --- GLOBAL VARIABLES ---
+const defaultSettings = {
+  tipo: 'Vanity Brows',
+  precio: 5250,
+  nombreBusiness: 'Vanity Beauty Center',
+  direccion: 'Av. Ejemplo 123, Ciudad',
+  rfc: '',
+  tel: '8443555108',
+  leyenda: '¡Gracias por tu preferencia!',
+  folioPrefix: 'AP-',
+  folioSeq: 1
+};
+
+let settings = {};
+let movements = [];
+let clients = [];
+let users = [];
+let products = [];
+let incomeChart = null;
+let paymentMethodChart = null;
+let currentUser = {};
+let currentClientId = null;
+let cancellationRequests = [];
 
 // --- UTILITIES ---
 function escapeHTML(str) {
@@ -180,6 +203,8 @@ function initializeDynamicSystem() {
                     discountSymbol.textContent = '%';
                 } else if (this.value === 'amount') {
                     discountSymbol.textContent = '$';
+                } else if (this.value === 'anticipo') {
+                    discountSymbol.textContent = '💰';
                 } else if (this.value === 'warrior') {
                     discountSymbol.textContent = '🎗️';
                 } else {
@@ -187,7 +212,10 @@ function initializeDynamicSystem() {
                 }
             }
             
-            if (!isDiscountSelected) {
+            // Manejo especial para anticipos
+            if (this.value === 'anticipo') {
+                showAvailableAnticipos();
+            } else if (!isDiscountSelected) {
                 discountValue.value = '';
                 discountReason.value = '';
             }
@@ -462,6 +490,193 @@ function aplicarAnticipo(anticipoId, monto) {
     alert('Anticipo aplicado correctamente');
 }
 
+async function showAvailableAnticipos() {
+    const clienteInput = document.getElementById('m-cliente');
+    const clienteNombre = clienteInput.value.trim();
+    
+    if (!clienteNombre) {
+        alert('Por favor selecciona un cliente primero para ver sus anticipos disponibles.');
+        document.getElementById('discount-type').value = '';
+        return;
+    }
+    
+    try {
+        // Obtener anticipos disponibles del cliente
+        const response = await fetch('/api/movements');
+        const movements = await response.json();
+        
+        // Filtrar anticipos del cliente que no han sido aplicados
+        const anticipos = movements.filter(mov => {
+            const client = clients.find(c => c.id === mov.clienteId);
+            return client && 
+                   client.nombre.toLowerCase() === clienteNombre.toLowerCase() &&
+                   mov.concepto && 
+                   mov.concepto.includes('Anticipo') && 
+                   !mov.aplicado; // Asumir que agregaremos un campo 'aplicado'
+        });
+        
+        if (anticipos.length === 0) {
+            // Permitir ingresar anticipo manualmente si no hay registrados
+            const manualAnticipo = confirm(`No hay anticipos registrados para "${clienteNombre}".\n\n¿La cliente dio un anticipo directamente que no está en el sistema?\n\nHaz clic en OK para ingresar el anticipo manualmente.`);
+            
+            if (!manualAnticipo) {
+                document.getElementById('discount-type').value = '';
+                return;
+            }
+            
+            // Mostrar el checkbox de confirmación
+            mostrarConfirmacionAnticipoManual(clienteNombre);
+            return;
+        }
+        
+        // Crear lista de anticipos para mostrar al usuario
+        let anticiposList = 'Anticipos disponibles:\n\n';
+        anticipos.forEach((anticipo, index) => {
+            anticiposList += `${index + 1}. $${parseFloat(anticipo.monto).toFixed(2)} - Folio: ${anticipo.folio}\n`;
+        });
+        
+        const selectedIndex = prompt(anticiposList + '\nEscribe el número del anticipo que deseas aplicar:');
+        
+        if (selectedIndex === null) {
+            document.getElementById('discount-type').value = '';
+            return;
+        }
+        
+        const anticipoIndex = parseInt(selectedIndex) - 1;
+        
+        if (isNaN(anticipoIndex) || anticipoIndex < 0 || anticipoIndex >= anticipos.length) {
+            alert('Selección inválida');
+            document.getElementById('discount-type').value = '';
+            return;
+        }
+        
+        const selectedAnticipo = anticipos[anticipoIndex];
+        
+        // Aplicar el anticipo como descuento
+        const discountValue = document.getElementById('discount-value');
+        const discountReason = document.getElementById('discount-reason');
+        
+        if (discountValue) {
+            discountValue.value = parseFloat(selectedAnticipo.monto).toFixed(2);
+            discountValue.disabled = true;
+        }
+        
+        if (discountReason) {
+            discountReason.value = `Anticipo aplicado - Folio: ${selectedAnticipo.folio}`;
+            discountReason.disabled = true;
+        }
+        
+        // Guardar referencia del anticipo para el ticket
+        window.appliedAnticipo = {
+            id: selectedAnticipo.id,
+            folio: selectedAnticipo.folio,
+            monto: selectedAnticipo.monto
+        };
+        
+        calculateTotals();
+        
+    } catch (error) {
+        console.error('Error loading anticipos:', error);
+        alert('Error al cargar los anticipos del cliente');
+        document.getElementById('discount-type').value = '';
+    }
+}
+
+function aplicarAnticipoManual(monto, comentario, clienteNombre) {
+    // Aplicar el anticipo manual como descuento
+    const discountType = document.getElementById('discount-type');
+    const discountValue = document.getElementById('discount-value');
+    const discountReason = document.getElementById('discount-reason');
+    
+    if (discountValue) {
+        discountValue.value = monto.toFixed(2);
+        discountValue.disabled = true;
+    }
+    
+    if (discountReason) {
+        discountReason.value = `Anticipo manual - ${comentario}`;
+        discountReason.disabled = true;
+    }
+    
+    // Guardar referencia del anticipo manual para el ticket
+    window.appliedAnticipo = {
+        id: 'manual_' + Date.now(),
+        folio: 'MANUAL',
+        monto: monto,
+        comentario: comentario,
+        cliente: clienteNombre,
+        manual: true
+    };
+    
+    calculateTotals();
+    alert(`Anticipo manual de $${monto.toFixed(2)} aplicado correctamente para ${clienteNombre}`);
+}
+
+function mostrarConfirmacionAnticipoManual(clienteNombre) {
+    // Mostrar el checkbox de confirmación
+    const confirmationDiv = document.getElementById('anticipo-manual-confirmation');
+    const checkbox = document.getElementById('confirm-anticipo-manual');
+    
+    confirmationDiv.style.display = 'block';
+    checkbox.checked = false;
+    
+    // Crear un botón temporal para proceder
+    const existingButton = document.getElementById('btn-proceder-anticipo-manual');
+    if (existingButton) {
+        existingButton.remove();
+    }
+    
+    const proceedButton = document.createElement('button');
+    proceedButton.id = 'btn-proceder-anticipo-manual';
+    proceedButton.textContent = 'Proceder con Anticipo Manual';
+    proceedButton.className = 'modern-btn btn-primary';
+    proceedButton.style.marginTop = '10px';
+    proceedButton.disabled = true;
+    
+    // Habilitar botón solo cuando checkbox esté marcado
+    checkbox.addEventListener('change', function() {
+        proceedButton.disabled = !this.checked;
+    });
+    
+    proceedButton.addEventListener('click', function() {
+        if (checkbox.checked) {
+            procederConAnticipoManual(clienteNombre);
+        }
+    });
+    
+    confirmationDiv.appendChild(proceedButton);
+}
+
+function procederConAnticipoManual(clienteNombre) {
+    // Permitir entrada manual del anticipo
+    const montoManual = prompt('Ingresa el monto del anticipo que dio la cliente:');
+    
+    if (!montoManual || isNaN(parseFloat(montoManual)) || parseFloat(montoManual) <= 0) {
+        alert('Monto inválido. Operación cancelada.');
+        ocultarConfirmacionAnticipoManual();
+        document.getElementById('discount-type').value = '';
+        return;
+    }
+    
+    const comentario = prompt('Comentario/referencia del anticipo (opcional):') || 'Anticipo manual - no registrado previamente';
+    
+    // Ocultar la confirmación
+    ocultarConfirmacionAnticipoManual();
+    
+    // Aplicar el anticipo manual
+    aplicarAnticipoManual(parseFloat(montoManual), comentario, clienteNombre);
+}
+
+function ocultarConfirmacionAnticipoManual() {
+    const confirmationDiv = document.getElementById('anticipo-manual-confirmation');
+    const existingButton = document.getElementById('btn-proceder-anticipo-manual');
+    
+    confirmationDiv.style.display = 'none';
+    if (existingButton) {
+        existingButton.remove();
+    }
+}
+
 function calculateTotals() {
     currentSubtotal = selectedProducts.reduce((sum, product) => {
         return sum + (product.price * product.quantity);
@@ -474,6 +689,8 @@ function calculateTotals() {
     if (discountType === 'percentage') {
         currentDiscount = currentSubtotal * (discountValue / 100);
     } else if (discountType === 'amount') {
+        currentDiscount = Math.min(discountValue, currentSubtotal);
+    } else if (discountType === 'anticipo') {
         currentDiscount = Math.min(discountValue, currentSubtotal);
     } else if (discountType === 'warrior') {
         currentDiscount = currentSubtotal; // 100% de descuento
@@ -529,30 +746,6 @@ function formatDate(dateString) {
 }
 
 const APP_VERSION = '1.4.0';
-
-// --- ESTADO Y DATOS ---
-const DEFAULT_SETTINGS = {
-  negocio: 'Ale Ponce',
-  tagline: 'beauty expert',
-  calle: 'Benito Juarez 246',
-  colonia: 'Col. Los Pinos',
-  cp: '252 pinos',
-  rfc: '',
-  tel: '8443555108',
-  leyenda: '¡Gracias por tu preferencia!',
-  folioPrefix: 'AP-',
-  folioSeq: 1
-};
-
-let settings = {};
-let movements = [];
-let clients = [];
-let users = [];
-let products = [];
-let incomeChart = null;
-let paymentMethodChart = null;
-let currentUser = {};
-let currentClientId = null;
 
 // --- DOM ELEMENTS ---
 const formSettings = document.getElementById('formSettings');
@@ -818,10 +1011,20 @@ function renderTable() {
     tr.insertCell().textContent = Number(mov.monto).toFixed(2);
 
     const actionsCell = tr.insertCell();
+    
+    // Botón de solicitar cancelación para todos los usuarios
+    const cancelRequestButton = document.createElement('button');
+    cancelRequestButton.className = 'action-btn btn-warning';
+    cancelRequestButton.dataset.id = mov.id;
+    cancelRequestButton.dataset.action = 'request-cancel';
+    cancelRequestButton.textContent = 'Solicitar Cancelación';
+    cancelRequestButton.style.marginRight = '5px';
+    actionsCell.appendChild(cancelRequestButton);
+    
     // Solo mostrar botón de eliminar para administradores
     if (currentUser && currentUser.role === 'admin') {
       const deleteButton = document.createElement('button');
-      deleteButton.className = 'action-btn';
+      deleteButton.className = 'action-btn btn-danger';
       deleteButton.dataset.id = mov.id;
       deleteButton.dataset.action = 'delete';
       deleteButton.textContent = 'Eliminar';
@@ -1140,6 +1343,89 @@ async function deleteProduct(id) {
     }
 }
 
+function showCancellationRequestModal(movementId, movement) {
+    const client = clients.find(c => c.id === movement.clienteId);
+    const clientName = client ? client.nombre : 'Cliente Eliminado';
+
+    const modalHTML = `
+        <div id="cancellation-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h2>Solicitar Cancelación de Venta</h2>
+                <div class="cancellation-info">
+                    <p><strong>Folio:</strong> ${escapeHTML(movement.folio)}</p>
+                    <p><strong>Cliente:</strong> ${escapeHTML(clientName)}</p>
+                    <p><strong>Concepto:</strong> ${escapeHTML(movement.concepto || 'N/A')}</p>
+                    <p><strong>Monto:</strong> $${Number(movement.monto).toFixed(2)}</p>
+                    <p><strong>Fecha:</strong> ${formatDate(movement.fechaISO)}</p>
+                </div>
+                <form id="formCancellationRequest">
+                    <div class="form-grid-single">
+                        <label>Motivo de la cancelación:</label>
+                        <textarea id="cancellation-reason" required placeholder="Describe el motivo de la solicitud de cancelación..." rows="4"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-warning">Enviar Solicitud</button>
+                        <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('cancellation-modal');
+    const closeButton = modal.querySelector('.close-button');
+    const cancelButton = modal.querySelector('.modal-cancel');
+    const form = modal.querySelector('#formCancellationRequest');
+
+    const closeModal = () => modal.remove();
+
+    closeButton.onclick = closeModal;
+    cancelButton.onclick = closeModal;
+    window.onclick = (event) => {
+        if (event.target == modal) {
+            closeModal();
+        }
+    };
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const reason = document.getElementById('cancellation-reason').value.trim();
+        
+        if (!reason) {
+            alert('Por favor ingresa un motivo para la cancelación.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/movements/${movementId}/cancel-request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert('Solicitud de cancelación enviada exitosamente. La venta quedará oculta hasta que el administrador revise tu solicitud.');
+                closeModal();
+                // Refresh movements to hide the temporarily cancelled item
+                const movementsResponse = await fetch('/api/movements');
+                if (movementsResponse.ok) {
+                    movements = await movementsResponse.json();
+                    renderTable();
+                }
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión al enviar la solicitud.');
+        }
+    };
+}
+
 function showAddCourseModal(clientId) {
     const courses = products.filter(p => p.type === 'course');
     const courseOptions = courses.map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
@@ -1235,16 +1521,23 @@ async function handleNewMovement(e) {
   e.preventDefault();
   const form = e.target;
   const monto = parseFloat(document.getElementById('m-monto').value || 0);
-  const clienteNombre = document.getElementById('m-cliente').value;
+  const clienteNombre = document.getElementById('m-cliente').value.trim() || 'Público General';
 
   if (selectedProducts.length === 0) {
     alert('Por favor selecciona al menos un producto o servicio');
     return;
   }
 
-  let client = clients.find(c => c.nombre.toLowerCase() === clienteNombre.toLowerCase());
-  if (!client) {
-    if (confirm(`El cliente "${clienteNombre}" no existe. ¿Deseas crearlo?`)) {
+  // Check if this is an anticipo (doesn't need specific client)
+  const isAnticipo = selectedProducts.some(p => p.type === 'anticipo');
+  const isAnticipoGeneral = clienteNombre === 'Anticipo General';
+  const isPublicoGeneral = clienteNombre === 'Público General';
+  
+  let client = null;
+  if (!isAnticipoGeneral && !isPublicoGeneral) {
+    client = clients.find(c => c.nombre.toLowerCase() === clienteNombre.toLowerCase());
+    if (!client) {
+      if (confirm(`El cliente "${clienteNombre}" no existe. ¿Deseas crearlo?`)) {
       const newClient = {
         id: crypto.randomUUID(),
         nombre: clienteNombre,
@@ -1254,13 +1547,53 @@ async function handleNewMovement(e) {
       };
       await saveClient(newClient);
       client = newClient;
-    } else {
-      return;
+      } else {
+        return;
+      }
     }
+  } else if (isPublicoGeneral) {
+    // For público general, create a generic client entry
+    client = {
+      id: 'publico_general',
+      nombre: 'Público General',
+      telefono: '',
+      cumpleaños: '',
+      consentimiento: false
+    };
+  } else {
+    // For anticipo general, create a generic client entry
+    client = {
+      id: 'anticipo_general',
+      nombre: 'Anticipo General',
+      telefono: '',
+      cumpleaños: '',
+      consentimiento: false
+    };
   }
 
   // Build concept from selected products
   const concepto = selectedProducts.map(p => `${p.name} (${p.quantity}x)`).join(', ');
+
+  // Obtener información del descuento aplicado
+  const discountType = document.getElementById('discount-type')?.value;
+  const discountValue = parseFloat(document.getElementById('discount-value')?.value) || 0;
+  const discountReason = document.getElementById('discount-reason')?.value || '';
+  
+  let discountInfo = null;
+  if (currentDiscount > 0) {
+    discountInfo = {
+      type: discountType,
+      value: discountValue,
+      amount: currentDiscount,
+      reason: discountReason,
+      percentage: currentSubtotal > 0 ? (currentDiscount / currentSubtotal * 100) : 0
+    };
+    
+    // Si es un anticipo aplicado, incluir información adicional
+    if (discountType === 'anticipo' && window.appliedAnticipo) {
+      discountInfo.anticipo = window.appliedAnticipo;
+    }
+  }
 
   const newMovement = {
     id: crypto.randomUUID(),
@@ -1278,7 +1611,8 @@ async function handleNewMovement(e) {
     horaCita: document.getElementById('m-hora-cita').value,
     productos: selectedProducts, // Store product details for ticket
     descuento: currentDiscount,
-    subtotal: currentSubtotal
+    subtotal: currentSubtotal,
+    discountInfo: discountInfo // Información detallada del descuento para el ticket
   };
 
   await addMovement(newMovement);
@@ -1292,6 +1626,11 @@ async function handleNewMovement(e) {
   renderSelectedProducts();
   calculateTotals();
   hideDynamicSections();
+  
+  // Limpiar anticipo aplicado
+  if (window.appliedAnticipo) {
+    delete window.appliedAnticipo;
+  }
   
   document.getElementById('m-cliente').focus();
 }
@@ -1437,7 +1776,7 @@ function handleTableClick(e) {
     const id = actionBtn.dataset.id;
     const action = actionBtn.dataset.action;
 
-    if (action === 'reprint' || action === 'delete') {
+    if (action === 'reprint' || action === 'delete' || action === 'request-cancel') {
       const movement = movements.find(m => m.id === id);
       if (movement) {
         if (action === 'reprint') {
@@ -1445,6 +1784,8 @@ function handleTableClick(e) {
           renderTicketAndPrint({ ...movement, client }, settings);
         } else if (action === 'delete') {
           deleteMovement(id);
+        } else if (action === 'request-cancel') {
+          showCancellationRequestModal(id, movement);
         }
       }
     } else if (action === 'edit-user') {
@@ -1504,6 +1845,36 @@ function handleClientTabChange(e) {
   activateClientSubTab(subTabId);
 }
 
+function handleSalesTabChange(e) {
+  const subTabButton = e.target.closest('.sub-tab-link');
+  if (!subTabButton) return;
+  e.preventDefault();
+  const subTabId = subTabButton.dataset.subtab;
+  activateSalesSubTab(subTabId);
+}
+
+function activateSalesSubTab(subTabId) {
+  if (!subTabId) return;
+
+  document.querySelectorAll('#tab-movements .sub-tab-link').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('#tab-movements .sub-tab-content').forEach(content => content.classList.remove('active'));
+
+  const tabButton = document.querySelector(`[data-subtab="${subTabId}"]`);
+  const tabContent = document.getElementById(subTabId);
+
+  if (tabButton) {
+    tabButton.classList.add('active');
+  }
+  if (tabContent) {
+    tabContent.classList.add('active');
+  }
+
+  // Si cambiamos a la pestaña de tickets, cargar los movimientos
+  if (subTabId === 'sub-tab-tickets') {
+    renderTable();
+  }
+}
+
 function activateTab(tabId) {
   if (!tabId) return;
 
@@ -1560,6 +1931,10 @@ function activateTab(tabId) {
       });
     }
     loadDashboardData();
+  } else if (tabId === 'tab-cancellation-requests') {
+    loadCancellationRequests();
+  } else if (tabId === 'tab-movements') {
+    initializeModernSalesInterface();
   }
 }
 
@@ -1601,6 +1976,7 @@ function setupUIForRole(role) {
     
     const dashboardTab = document.querySelector('[data-tab="tab-dashboard"]');
     const settingsTab = document.querySelector('[data-tab="tab-settings"]');
+    const cancellationRequestsTab = document.getElementById('tab-cancellation-requests-btn');
     const userManagementSection = document.getElementById('user-management-section');
     const staffInput = document.getElementById('m-staff');
     const dbInfoIcon = document.getElementById('db-info-icon');
@@ -1611,8 +1987,13 @@ function setupUIForRole(role) {
     if (role === 'admin') {
         if (dashboardTab) dashboardTab.style.display = 'block';
         if (settingsTab) settingsTab.style.display = 'block';
+        if (cancellationRequestsTab) cancellationRequestsTab.style.display = 'block';
         if (userManagementSection) userManagementSection.style.display = 'block';
         if (dbInfoIcon) dbInfoIcon.style.display = 'inline-block';
+        
+        // Show import products button for admins
+        const importProductsBtn = document.getElementById('btnImportProducts');
+        if (importProductsBtn) importProductsBtn.style.display = 'inline-block';
         
         fetch('/api/users')
             .then(res => {
@@ -1635,6 +2016,9 @@ function setupUIForRole(role) {
             settingsTab.style.display = 'none';
             console.log('Settings tab oculto');
         }
+        if (cancellationRequestsTab) {
+            cancellationRequestsTab.style.display = 'none';
+        }
         if (userManagementSection) userManagementSection.style.display = 'none';
         if (dbInfoIcon) dbInfoIcon.style.display = 'none';
     }
@@ -1648,6 +2032,470 @@ function populateFooter() {
     // Footer elements removed - no longer needed
 }
 
+
+// --- CANCELLATION REQUESTS FUNCTIONS ---
+
+async function loadCancellationRequests() {
+    if (currentUser.role !== 'admin') return;
+    
+    try {
+        const response = await fetch('/api/cancellation-requests');
+        if (response.ok) {
+            cancellationRequests = await response.json();
+            renderCancellationRequestsTable();
+        }
+    } catch (error) {
+        console.error('Error loading cancellation requests:', error);
+    }
+}
+
+function renderCancellationRequestsTable() {
+    const tableBody = document.querySelector('#tblCancellationRequests tbody');
+    const noRequestsDiv = document.getElementById('no-cancellation-requests');
+    
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    if (cancellationRequests.length === 0) {
+        if (noRequestsDiv) noRequestsDiv.style.display = 'block';
+        return;
+    }
+    
+    if (noRequestsDiv) noRequestsDiv.style.display = 'none';
+    
+    cancellationRequests.forEach(request => {
+        const row = tableBody.insertRow();
+        
+        // Status styling
+        const statusClass = {
+            'pending': 'status-pending',
+            'approved': 'status-approved', 
+            'denied': 'status-denied'
+        }[request.status] || '';
+        
+        const statusText = {
+            'pending': 'Pendiente',
+            'approved': 'Aprobada',
+            'denied': 'Denegada'
+        }[request.status] || request.status;
+        
+        row.innerHTML = `
+            <td>${escapeHTML(request.folio || 'N/A')}</td>
+            <td>${escapeHTML(request.client_name || 'N/A')}</td>
+            <td>$${Number(request.monto || 0).toFixed(2)}</td>
+            <td>${escapeHTML(request.requested_by_name || 'N/A')}</td>
+            <td>${formatDate(request.created_at)}</td>
+            <td class="reason-cell" title="${escapeHTML(request.reason)}">${escapeHTML(request.reason.substring(0, 50))}${request.reason.length > 50 ? '...' : ''}</td>
+            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <td>
+                ${request.status === 'pending' ? `
+                    <button class="action-btn btn-success" onclick="processCancellationRequest('${request.id}', 'approved')" title="Aprobar">
+                        ✓ Aprobar
+                    </button>
+                    <button class="action-btn btn-danger" onclick="processCancellationRequest('${request.id}', 'denied')" title="Denegar">
+                        ✗ Denegar
+                    </button>
+                ` : `
+                    <span class="processed-info">
+                        ${request.status === 'approved' ? 'Aprobada' : 'Denegada'}
+                        ${request.reviewed_at ? `<br><small>${formatDate(request.reviewed_at)}</small>` : ''}
+                    </span>
+                `}
+            </td>
+        `;
+    });
+}
+
+async function processCancellationRequest(requestId, status) {
+    const request = cancellationRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    const actionText = status === 'approved' ? 'aprobar' : 'denegar';
+    const actionPast = status === 'approved' ? 'aprobada' : 'denegada';
+    
+    let adminNotes = '';
+    if (status === 'denied') {
+        adminNotes = prompt('Notas del administrador (opcional):', '');
+        if (adminNotes === null) return; // Usuario canceló
+    } else {
+        const confirmMsg = `¿Estás seguro de que quieres ${actionText} la cancelación del folio ${request.folio}?\n\nEsto ${status === 'approved' ? 'ELIMINARÁ PERMANENTEMENTE' : 'restaurará'} la venta.`;
+        if (!confirm(confirmMsg)) return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cancellation-requests/${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, admin_notes: adminNotes })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`Solicitud ${actionPast} exitosamente.`);
+            await loadCancellationRequests();
+            
+            // Refresh movements list to show/hide the movement
+            const movementsResponse = await fetch('/api/movements');
+            if (movementsResponse.ok) {
+                movements = await movementsResponse.json();
+                renderTable();
+            }
+        } else {
+            alert(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al procesar la solicitud.');
+    }
+}
+
+// --- BULK PRODUCTS IMPORT ---
+async function importProductsFromJSON() {
+    const jsonData = {
+        "Servicios": {
+            "Pestañas": {
+                "Servicios": [
+                    { "nombre": "Extensión de Pestañas (Clean Girl)", "precio": 1570, "orden": 1 },
+                    { "nombre": "Extensión de Pestañas (Elegant Lashes)", "precio": 950, "orden": 2 },
+                    { "nombre": "Extensión de Pestañas (Mystery Lashes)", "precio": 1210, "orden": 3 },
+                    { "nombre": "Extensión de Pestañas (Seduction Lashes)", "precio": 1580, "orden": 4 },
+                    { "nombre": "Lash Lifting", "precio": 740, "orden": 5 },
+                    { "nombre": "Retiro de pestañas", "precio": 140, "orden": 6 },
+                    { "nombre": "Tinte para pestañas (Lash Lifting)", "precio": 210, "orden": 7 }
+                ],
+                "Retoques": {
+                    "Elegant Lashes": [
+                        { "nombre": "Retoque (1ª Semana)", "precio": 320, "orden": 10 },
+                        { "nombre": "Retoque (2ª Semana)", "precio": 420, "orden": 11 },
+                        { "nombre": "Retoque (3ª Semana)", "precio": 530, "orden": 12 }
+                    ],
+                    "Mystery Lashes": [
+                        { "nombre": "Retoque (1ª Semana)", "precio": 330, "orden": 20 },
+                        { "nombre": "Retoque (2ª Semana)", "precio": 430, "orden": 21 },
+                        { "nombre": "Retoque (3ª Semana)", "precio": 540, "orden": 22 }
+                    ],
+                    "Seduction Lashes": [
+                        { "nombre": "Retoque (1ª Semana)", "precio": 340, "orden": 30 },
+                        { "nombre": "Retoque (2ª Semana)", "precio": 440, "orden": 31 },
+                        { "nombre": "Retoque (3ª Semana)", "precio": 550, "orden": 32 }
+                    ]
+                }
+            },
+            "Microblading": {
+                "Servicios": [
+                    { "nombre": "Retoque Vanity Brows (Microblading)", "precio": 3680 },
+                    { "nombre": "Vanity Lips", "precio": 5250 },
+                    { "nombre": "Microblading Vanity Brows", "precio": 5250 },
+                    { "nombre": "Powder Brows", "precio": 3680 }
+                ]
+            },
+            "Uñas": {
+                "Servicios": [
+                    { "nombre": "Nail Art", "precio": null }
+                ]
+            }
+        }
+    };
+
+    const productsToImport = [];
+
+    // Convert JSON structure to flat products array
+    Object.keys(jsonData.Servicios).forEach(mainCategory => {
+        const categoryData = jsonData.Servicios[mainCategory];
+        
+        Object.keys(categoryData).forEach(subCategoryKey => {
+            if (subCategoryKey === 'Servicios') {
+                // Direct services
+                categoryData[subCategoryKey].forEach(service => {
+                    productsToImport.push({
+                        name: service.nombre,
+                        type: 'service',
+                        price: service.precio,
+                        category: mainCategory,
+                        subcategory: 'Servicios',
+                        custom_price: service.precio === null,
+                        sort_order: service.orden || 0
+                    });
+                });
+            } else if (subCategoryKey === 'Retoques') {
+                // Retoques with sub-subcategories
+                Object.keys(categoryData[subCategoryKey]).forEach(retouchType => {
+                    categoryData[subCategoryKey][retouchType].forEach(retouch => {
+                        productsToImport.push({
+                            name: `${retouchType} - ${retouch.nombre}`,
+                            type: 'service',
+                            price: retouch.precio,
+                            category: mainCategory,
+                            subcategory: `Retoques - ${retouchType}`,
+                            custom_price: false,
+                            sort_order: retouch.orden || 0
+                        });
+                    });
+                });
+            }
+        });
+    });
+
+    try {
+        const response = await fetch('/api/products/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ products: productsToImport })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`${result.count} productos importados exitosamente.`);
+            // Refresh products list
+            const productsResponse = await fetch('/api/products');
+            if (productsResponse.ok) {
+                products = await productsResponse.json();
+                renderProductTables();
+                updateUnifiedProductsAfterChange();
+            }
+        } else {
+            alert(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al importar productos.');
+        console.error('Import error:', error);
+    }
+}
+
+// --- MODERN SALES INTERFACE FUNCTIONS ---
+
+function initializeModernSalesInterface() {
+    // Initialize all categories as collapsed
+    const categorySections = document.querySelectorAll('.category-section');
+    categorySections.forEach(section => {
+        const productsGrid = section.querySelector('.products-grid');
+        const toggle = section.querySelector('.category-toggle');
+        if (productsGrid && toggle) {
+            productsGrid.style.display = 'none';
+            toggle.textContent = '▶';
+            section.classList.add('collapsed');
+        }
+    });
+
+    // Initialize category toggles
+    const categoryHeaders = document.querySelectorAll('.category-header');
+    categoryHeaders.forEach(header => {
+        header.addEventListener('click', toggleCategory);
+    });
+
+    // Load products by categories
+    loadProductsByCategories();
+    
+    // Update cart display
+    updateCartDisplay();
+}
+
+function toggleCategory(event) {
+    const categorySection = event.currentTarget.closest('.category-section');
+    const toggle = categorySection.querySelector('.category-toggle');
+    const productsGrid = categorySection.querySelector('.products-grid');
+    
+    categorySection.classList.toggle('collapsed');
+    
+    if (categorySection.classList.contains('collapsed')) {
+        productsGrid.style.display = 'none';
+        toggle.textContent = '▶';
+    } else {
+        productsGrid.style.display = 'block';
+        toggle.textContent = '▼';
+    }
+}
+
+async function loadProductsByCategories() {
+    try {
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to load products');
+        
+        const allProducts = await response.json();
+        
+        // Group products by category
+        const productsByCategory = {};
+        allProducts.forEach(product => {
+            const category = product.category || 'Otros';
+            if (!productsByCategory[category]) {
+                productsByCategory[category] = [];
+            }
+            productsByCategory[category].push(product);
+        });
+        
+        // Populate each category
+        renderProductsInCategory('Vanity Lashes', productsByCategory['Vanity Lashes'] || []);
+        renderProductsInCategory('PMU Services', productsByCategory['PMU Services'] || []);
+        renderProductsInCategory('Uñas', productsByCategory['Uñas'] || []);
+        
+    } catch (error) {
+        console.error('Error loading products:', error);
+    }
+}
+
+function renderProductsInCategory(categoryName, products) {
+    let containerId;
+    switch(categoryName) {
+        case 'Vanity Lashes':
+            containerId = 'pestanas-products';
+            break;
+        case 'PMU Services':
+            containerId = 'microblading-products';
+            break;
+        case 'Uñas':
+            containerId = 'unas-products';
+            break;
+        default:
+            return;
+    }
+    
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (products.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay productos disponibles</p>';
+        return;
+    }
+    
+    products.forEach(product => {
+        const productCard = createProductCard(product);
+        container.appendChild(productCard);
+    });
+}
+
+
+function createProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.dataset.productId = product.id;
+    
+    const priceDisplay = product.custom_price 
+        ? '<span class="product-price custom">Precio personalizado</span>'
+        : `<span class="product-price">$${parseFloat(product.price || 0).toFixed(2)}</span>`;
+    
+    card.innerHTML = `
+        <div class="product-name">${escapeHTML(product.name)}</div>
+        ${priceDisplay}
+        <div class="product-actions">
+            <input type="number" class="quantity-input" min="1" value="1" />
+            <button class="btn-select-product" onclick="addProductToCart(${product.id})">
+                Agregar
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+function addProductToCart(productId) {
+    const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+    if (!productCard) return;
+    
+    const quantityInput = productCard.querySelector('.quantity-input');
+    const quantity = parseInt(quantityInput.value) || 1;
+    
+    // Find the product in the products array
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    // Handle custom price products
+    let price = product.price;
+    if (product.custom_price) {
+        const customPrice = prompt(`Ingresa el precio para "${product.name}":`, '0');
+        if (customPrice === null) return; // User cancelled
+        price = parseFloat(customPrice) || 0;
+    }
+    
+    // Check if product is already in cart
+    const existingIndex = selectedProducts.findIndex(p => p.id === productId);
+    
+    if (existingIndex >= 0) {
+        // Update quantity
+        selectedProducts[existingIndex].quantity += quantity;
+        selectedProducts[existingIndex].price = price; // Update price in case it changed
+    } else {
+        // Add new product
+        selectedProducts.push({
+            id: product.id,
+            name: product.name,
+            price: price,
+            quantity: quantity,
+            type: product.type,
+            custom_price: product.custom_price
+        });
+    }
+    
+    // Visual feedback
+    productCard.classList.add('selected');
+    setTimeout(() => {
+        productCard.classList.remove('selected');
+    }, 1000);
+    
+    // Reset quantity input
+    quantityInput.value = 1;
+    
+    updateCartDisplay();
+    calculateTotals();
+}
+
+function removeProductFromCart(productId) {
+    selectedProducts = selectedProducts.filter(p => p.id !== productId);
+    updateCartDisplay();
+    calculateTotals();
+}
+
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('selected-products-container');
+    const cartCount = document.getElementById('cart-count');
+    const cartTotal = document.getElementById('cart-total');
+    
+    if (!cartContainer) return;
+    
+    // Update header counts
+    const totalItems = selectedProducts.reduce((sum, p) => sum + p.quantity, 0);
+    if (cartCount) cartCount.textContent = `${totalItems} producto${totalItems !== 1 ? 's' : ''}`;
+    
+    // Clear container
+    cartContainer.innerHTML = '';
+    
+    if (selectedProducts.length === 0) {
+        cartContainer.innerHTML = `
+            <div class="empty-cart">
+                <span class="empty-icon">🛒</span>
+                <p>Selecciona servicios para comenzar</p>
+            </div>
+        `;
+        return;
+    }
+    
+    selectedProducts.forEach(product => {
+        const cartItem = document.createElement('div');
+        cartItem.className = 'cart-item';
+        
+        cartItem.innerHTML = `
+            <div class="item-info">
+                <div class="item-name">${escapeHTML(product.name)}</div>
+                <div class="item-details">${product.quantity}x - ${product.custom_price ? 'Precio personalizado' : 'Precio fijo'}</div>
+            </div>
+            <div class="item-price">$${(product.price * product.quantity).toFixed(2)}</div>
+            <button class="btn-remove-item" onclick="removeProductFromCart(${product.id})" title="Remover">×</button>
+        `;
+        
+        cartContainer.appendChild(cartItem);
+    });
+}
+
+
+// Make functions globally accessible
+window.addProductToCart = addProductToCart;
+window.removeProductFromCart = removeProductFromCart;
+window.processCancellationRequest = processCancellationRequest;
+window.importProductsFromJSON = importProductsFromJSON;
+window.addAnticipo = addAnticipo;
 
 // Make removeProduct globally accessible
 window.removeProduct = removeProduct;
@@ -1683,6 +2531,7 @@ async function initializeApp() {
   const btnCancelEditUser = document.getElementById('btnCancelEditUser');
   const tipoServicioSelect = document.getElementById('m-tipo');
   const clientSubTabs = document.querySelector('#tab-clients .sub-tabs');
+  const salesSubTabs = document.querySelector('#tab-movements .sub-tabs');
   const dbInfoIcon = document.getElementById('db-info-icon');
   
   formSettings?.addEventListener('submit', handleSaveSettings);
@@ -1699,6 +2548,7 @@ async function initializeApp() {
   formProduct?.addEventListener('submit', handleAddOrUpdateProduct);
   tabs?.addEventListener('click', handleTabChange);
   clientSubTabs?.addEventListener('click', handleClientTabChange);
+  salesSubTabs?.addEventListener('click', handleSalesTabChange);
   
   if (currentUser.role === 'admin') {
       formAddUser?.addEventListener('submit', handleAddOrUpdateUser);
@@ -1809,7 +2659,7 @@ async function initializeApp() {
   }
 
   Promise.all([
-    fetch('/api/settings').then(res => res.json()).catch(() => DEFAULT_SETTINGS),
+    fetch('/api/settings').then(res => res.json()).catch(() => defaultSettings),
     fetch('/api/movements').then(res => res.json()).catch(() => []),
     fetch('/api/clients').then(res => res.json()).catch(() => []),
     fetch('/api/products').then(res => res.json()).catch(() => []),
@@ -1827,13 +2677,17 @@ async function initializeApp() {
     renderProductTables();
     console.log('Updating client datalist...');
     updateClientDatalist();
-    populateArticuloDropdown('');
+    // populateArticuloDropdown(''); // Legacy form function - not needed for modern interface
     
     if (currentUser) {
         console.log('Setting user info in form...');
-        document.getElementById('s-name').value = currentUser.name || '';
-        document.getElementById('s-username').value = currentUser.username;
-        document.getElementById('m-staff').value = currentUser.name || '';
+        const sNameField = document.getElementById('s-name');
+        const sUsernameField = document.getElementById('s-username');
+        const mStaffField = document.getElementById('m-staff');
+        
+        if (sNameField) sNameField.value = currentUser.name || '';
+        if (sUsernameField) sUsernameField.value = currentUser.username;
+        if (mStaffField) mStaffField.value = currentUser.name || '';
     }
     
     console.log('Setting up UI for role...');
@@ -2258,6 +3112,50 @@ function handleAnticipoSelection() {
     
     // Mensaje de confirmación
     alert(`✅ ANTICIPO AGREGADO\n\n${anticipoName}`);
+}
+
+// Modern interface anticipo function
+function addAnticipo() {
+    const amountInput = document.getElementById('anticipo-amount');
+    const commentInput = document.getElementById('anticipo-comment');
+    
+    const amount = parseFloat(amountInput.value);
+    const comment = commentInput.value.trim();
+    
+    if (!amount || amount <= 0) {
+        alert('Por favor ingresa una cantidad válida para el anticipo.');
+        return;
+    }
+    
+    // Create anticipo product name
+    const anticipoName = comment ? `Anticipo - ${comment}` : 'Anticipo';
+    
+    // Clear the client field since anticipo doesn't need a specific client
+    const clientInput = document.getElementById('m-cliente');
+    if (clientInput) {
+        clientInput.value = 'Anticipo General';
+    }
+    
+    // Add to cart as a product
+    selectedProducts.push({
+        id: 'anticipo_' + Date.now(),
+        name: anticipoName,
+        price: amount,
+        quantity: 1,
+        type: 'anticipo',
+        custom_price: false
+    });
+    
+    // Clear inputs
+    amountInput.value = '';
+    commentInput.value = '';
+    
+    // Update cart display
+    updateCartDisplay();
+    calculateTotals();
+    
+    // Show confirmation
+    alert(`✅ ANTICIPO AGREGADO\n\n${anticipoName}: $${amount.toFixed(2)}`);
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);

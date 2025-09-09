@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const app = express();
 const port = 3111;
@@ -134,6 +135,55 @@ function initializeApplication() {
                     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
                     FOREIGN KEY (course_id) REFERENCES products (id) ON DELETE CASCADE
                 )`);
+
+                // --- Tabla de Solicitudes de Cancelación ---
+                db.run(`CREATE TABLE IF NOT EXISTS cancellation_requests (
+                    id TEXT PRIMARY KEY,
+                    movement_id TEXT NOT NULL,
+                    requested_by TEXT NOT NULL, -- user id
+                    reason TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'denied'
+                    created_at TEXT NOT NULL,
+                    reviewed_by TEXT,
+                    reviewed_at TEXT,
+                    admin_notes TEXT,
+                    FOREIGN KEY (movement_id) REFERENCES movements (id),
+                    FOREIGN KEY (requested_by) REFERENCES users (id),
+                    FOREIGN KEY (reviewed_by) REFERENCES users (id)
+                )`);
+
+                // Agregar columna de estado temporal a movements
+                db.run("ALTER TABLE movements ADD COLUMN temp_cancelled INTEGER DEFAULT 0", (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error("Error adding temp_cancelled column:", err.message);
+                    }
+                });
+
+                // Agregar columnas para categorización de productos
+                db.run("ALTER TABLE products ADD COLUMN category TEXT", (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error("Error adding category column:", err.message);
+                    }
+                });
+                
+                db.run("ALTER TABLE products ADD COLUMN subcategory TEXT", (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error("Error adding subcategory column:", err.message);
+                    }
+                });
+
+                db.run("ALTER TABLE products ADD COLUMN custom_price INTEGER DEFAULT 0", (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error("Error adding custom_price column:", err.message);
+                    }
+                });
+
+                // Agregar campo de orden para control de secuencia
+                db.run("ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0", (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error("Error adding sort_order column:", err.message);
+                    }
+                });
 
                 // Una vez completada toda la inicialización de la DB, iniciar el servidor
                 startServer();
@@ -318,7 +368,7 @@ function startServer() {
 
     // --- Movements ---
     apiRouter.get('/movements', (req, res) => {
-        db.all("SELECT * FROM movements ORDER BY fechaISO DESC", [], (err, rows) => {
+        db.all("SELECT * FROM movements WHERE temp_cancelled = 0 OR temp_cancelled IS NULL ORDER BY fechaISO DESC", [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(rows);
         });
@@ -333,10 +383,104 @@ function startServer() {
         });
     });
 
-    apiRouter.delete('/movements/:id', (req, res) => {
+    apiRouter.delete('/movements/:id', isAdmin, (req, res) => {
         db.run(`DELETE FROM movements WHERE id = ?`, req.params.id, function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ message: 'Movement deleted' });
+        });
+    });
+
+    // --- Cancellation Requests ---
+    apiRouter.post('/movements/:id/cancel-request', (req, res) => {
+        const { reason } = req.body;
+        const movementId = req.params.id;
+        
+        if (!reason || reason.trim().length === 0) {
+            return res.status(400).json({ error: 'Reason is required' });
+        }
+
+        const requestId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+
+        // First, check if movement exists and is not already cancelled
+        db.get("SELECT * FROM movements WHERE id = ?", [movementId], (err, movement) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!movement) return res.status(404).json({ error: 'Movement not found' });
+            if (movement.temp_cancelled) return res.status(400).json({ error: 'Movement already has a pending cancellation request' });
+
+            // Check if there's already a pending request
+            db.get("SELECT * FROM cancellation_requests WHERE movement_id = ? AND status = 'pending'", [movementId], (err, existingRequest) => {
+                if (err) return res.status(500).json({ error: err.message });
+                if (existingRequest) return res.status(400).json({ error: 'There is already a pending cancellation request for this sale' });
+
+                // Create cancellation request
+                db.run(`INSERT INTO cancellation_requests (id, movement_id, requested_by, reason, status, created_at) 
+                        VALUES (?, ?, ?, ?, 'pending', ?)`,
+                    [requestId, movementId, req.session.userId, reason.trim(), createdAt], function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+
+                    // Mark movement as temporarily cancelled
+                    db.run("UPDATE movements SET temp_cancelled = 1 WHERE id = ?", [movementId], function(err) {
+                        if (err) return res.status(500).json({ error: err.message });
+                        res.status(201).json({ 
+                            message: 'Cancellation request created successfully',
+                            requestId: requestId 
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    apiRouter.get('/cancellation-requests', isAdmin, (req, res) => {
+        const sql = `
+            SELECT cr.*, u.name as requested_by_name, m.folio, m.monto, m.concepto, c.nombre as client_name
+            FROM cancellation_requests cr
+            LEFT JOIN users u ON cr.requested_by = u.id
+            LEFT JOIN movements m ON cr.movement_id = m.id
+            LEFT JOIN clients c ON m.clienteId = c.id
+            ORDER BY cr.created_at DESC
+        `;
+        db.all(sql, [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
+    });
+
+    apiRouter.put('/cancellation-requests/:id', isAdmin, (req, res) => {
+        const { status, admin_notes } = req.body;
+        const requestId = req.params.id;
+        
+        if (!status || !['approved', 'denied'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status. Must be approved or denied' });
+        }
+
+        const reviewedAt = new Date().toISOString();
+
+        db.get("SELECT * FROM cancellation_requests WHERE id = ?", [requestId], (err, request) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!request) return res.status(404).json({ error: 'Cancellation request not found' });
+            if (request.status !== 'pending') return res.status(400).json({ error: 'Request already processed' });
+
+            // Update request status
+            db.run(`UPDATE cancellation_requests SET status = ?, reviewed_by = ?, reviewed_at = ?, admin_notes = ? WHERE id = ?`,
+                [status, req.session.userId, reviewedAt, admin_notes || '', requestId], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+
+                if (status === 'approved') {
+                    // If approved, delete the movement
+                    db.run("DELETE FROM movements WHERE id = ?", [request.movement_id], function(err) {
+                        if (err) return res.status(500).json({ error: err.message });
+                        res.json({ message: 'Cancellation approved and sale deleted' });
+                    });
+                } else {
+                    // If denied, remove temporary cancellation
+                    db.run("UPDATE movements SET temp_cancelled = 0 WHERE id = ?", [request.movement_id], function(err) {
+                        if (err) return res.status(500).json({ error: err.message });
+                        res.json({ message: 'Cancellation request denied and sale restored' });
+                    });
+                }
+            });
         });
     });
 
@@ -350,29 +494,66 @@ function startServer() {
 
     // --- Product/Course Management ---
     apiRouter.get('/products', (req, res) => {
-        db.all("SELECT * FROM products ORDER BY type, name", [], (err, rows) => {
+        db.all("SELECT * FROM products ORDER BY type, sort_order, name", [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(rows);
         });
     });
 
-    apiRouter.post('/products', isAdmin, (req, res) => {
-        const { name, type, price } = req.body;
+    apiRouter.post('/products', (req, res) => {
+        const { name, type, price, category, subcategory, custom_price } = req.body;
         if (!name || !type) return res.status(400).json({ error: 'Name and type are required' });
-        db.run(`INSERT INTO products (name, type, price) VALUES (?, ?, ?)`,
-            [name, type, price || 0], function(err) {
+        db.run(`INSERT INTO products (name, type, price, category, subcategory, custom_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [name, type, price || 0, category, subcategory, custom_price ? 1 : 0, 0], function(err) {
             if (err) return res.status(500).json({ error: err.message });
-            res.status(201).json({ id: this.lastID, name, type, price });
+            res.status(201).json({ id: this.lastID, name, type, price, category, subcategory, custom_price, sort_order: 0 });
         });
     });
 
-    apiRouter.put('/products/:id', isAdmin, (req, res) => {
-        const { name, type, price } = req.body;
+    apiRouter.put('/products/:id', (req, res) => {
+        const { name, type, price, category, subcategory, custom_price } = req.body;
         if (!name || !type) return res.status(400).json({ error: 'Name and type are required' });
-        db.run(`UPDATE products SET name = ?, type = ?, price = ? WHERE id = ?`,
-            [name, type, price || 0, req.params.id], function(err) {
+        db.run(`UPDATE products SET name = ?, type = ?, price = ?, category = ?, subcategory = ?, custom_price = ? WHERE id = ?`,
+            [name, type, price || 0, category, subcategory, custom_price ? 1 : 0, req.params.id], function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ message: 'Product updated' });
+        });
+    });
+
+    // Bulk update products from JSON
+    apiRouter.post('/products/bulk-import', isAdmin, (req, res) => {
+        const { products } = req.body;
+        if (!products || !Array.isArray(products)) {
+            return res.status(400).json({ error: 'Products array is required' });
+        }
+
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
+            
+            const stmt = db.prepare(`INSERT OR REPLACE INTO products 
+                (name, type, price, category, subcategory, custom_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+            
+            products.forEach(product => {
+                stmt.run([
+                    product.name,
+                    product.type || 'service',
+                    product.price || null,
+                    product.category || null,
+                    product.subcategory || null,
+                    product.custom_price ? 1 : 0,
+                    product.sort_order || 0
+                ]);
+            });
+            
+            stmt.finalize();
+            
+            db.run("COMMIT", function(err) {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ message: 'Products imported successfully', count: products.length });
+            });
         });
     });
 
@@ -490,15 +671,15 @@ function startServer() {
     // --- Dashboard Route (Authenticated Users) ---
     apiRouter.get('/dashboard', isAuthenticated, (req, res) => {
         const queries = {
-            totalIncome: "SELECT SUM(monto) as total FROM movements",
-            totalMovements: "SELECT COUNT(*) as total FROM movements",
-            incomeByService: "SELECT tipo, SUM(monto) as total FROM movements GROUP BY tipo",
-            incomeByPaymentMethod: "SELECT metodo, SUM(monto) as total FROM movements WHERE metodo IS NOT NULL AND metodo != '''' GROUP BY metodo",
+            totalIncome: "SELECT SUM(monto) as total FROM movements WHERE temp_cancelled = 0 OR temp_cancelled IS NULL",
+            totalMovements: "SELECT COUNT(*) as total FROM movements WHERE temp_cancelled = 0 OR temp_cancelled IS NULL",
+            incomeByService: "SELECT tipo, SUM(monto) as total FROM movements WHERE temp_cancelled = 0 OR temp_cancelled IS NULL GROUP BY tipo",
+            incomeByPaymentMethod: "SELECT metodo, SUM(monto) as total FROM movements WHERE (temp_cancelled = 0 OR temp_cancelled IS NULL) AND metodo IS NOT NULL AND metodo != '''' GROUP BY metodo",
             upcomingAppointments: `
                 SELECT m.id, m.folio, m.fechaCita, m.horaCita, c.nombre as clienteNombre 
                 FROM movements m 
                 JOIN clients c ON m.clienteId = c.id 
-                WHERE m.fechaCita IS NOT NULL AND m.fechaCita >= date('now')
+                WHERE (m.temp_cancelled = 0 OR m.temp_cancelled IS NULL) AND m.fechaCita IS NOT NULL AND m.fechaCita >= date('now')
                 ORDER BY m.fechaCita ASC, m.horaCita ASC 
                 LIMIT 5`
         };
