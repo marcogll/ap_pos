@@ -3195,4 +3195,20 @@ function addAnticipo() {
 }
 
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+// Detectar sistema operativo y mostrar shortcut correcto
+function setCorrectClearShortcut() {
+    const shortcutElement = document.getElementById('clear-shortcut');
+    if (shortcutElement) {
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        if (isMac) {
+            shortcutElement.textContent = 'Cmd + Shift + R';
+        } else {
+            shortcutElement.textContent = 'Ctrl + Shift + R';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setCorrectClearShortcut();
+});
