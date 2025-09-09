@@ -98,7 +98,33 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 - Los datos se mantienen entre reinicios y actualizaciones del contenedor
 - Para más información sobre Docker, consulta [DOCKER.md](./DOCKER.md)
 
-## Novedades de la Versión 1.5.0
+## Novedades de la Versión 1.5.1
+
+### 🐛 **Correcciones Críticas**
+- **Fechas corregidas**: Resuelto bug que mostraba "undefined" en fechas de tickets
+- **Función esc() mejorada**: Corregida regex que causaba corrupción de fechas
+- **Validación de fechas**: Sistema robusto para manejo de fechas en tickets
+
+### 🎨 **Mejoras de Interfaz**
+- **Tickets alineados**: Todo el contenido del ticket alineado a la izquierda para mejor legibilidad
+- **Interface compacta**: Productos más compactos para reducir scroll necesario
+- **Auto-colapso**: Categorías de productos se colapsan automáticamente tras agregar items
+- **Botón limpieza removido**: Eliminado botón de limpiar formulario por simplicidad
+
+### 📱 **Favicons Integrados**
+- **Iconos profesionales**: Soporte completo para favicons en todos los dispositivos
+- **Apple Touch Icon**: Optimizado para dispositivos iOS
+- **Web Manifest**: Configuración PWA para instalación en dispositivos
+- **Multi-resolución**: Iconos 16x16, 32x32, 192x192, 512x512 para todas las pantallas
+
+### ⚡ **Optimizaciones UX**
+- **Cache-busting**: Sistema de versiones para actualizaciones inmediatas
+- **Fechas robustas**: Validación completa de fechas con padding automático
+- **Navegación fluida**: Mejor experiencia de usuario en productos y formularios
+
+---
+
+## Historial - Versión 1.5.0
 
 ### 🎫 **Reorganización de Interface**
 - **Subpestañas en Ventas**: Nueva estructura con "💰 Ventas" y "🎫 Tickets"  
