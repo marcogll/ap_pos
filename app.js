@@ -658,7 +658,11 @@ function procederConAnticipoManual(clienteNombre) {
         return;
     }
     
-    const comentario = prompt('Comentario/referencia del anticipo (opcional):') || 'Anticipo manual - no registrado previamente';
+    // Obtener comentario del campo en el formulario en lugar de usar prompt
+    const commentInput = document.getElementById('anticipo-comment');
+    const comentario = commentInput && commentInput.value.trim() 
+        ? commentInput.value.trim() 
+        : 'Anticipo manual - no registrado previamente';
     
     // Ocultar la confirmación
     ocultarConfirmacionAnticipoManual();
