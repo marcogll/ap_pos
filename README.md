@@ -10,7 +10,7 @@ Este es un sistema de Punto de Venta (POS) simple y eficiente, diseñado para ge
   - **Sistema de descuentos**: Descuentos por porcentaje o monto fijo con motivo
   - **Cálculo automático de totales**: Subtotal, descuento y total final en tiempo real
   - **Programación de citas**: Fecha y hora integradas en el flujo de ventas
-  - **Generación de tickets**: Recibos optimizados para impresión térmica de 58mm
+  - **Generación de tickets**: Recibos optimizados para impresión térmica de 58mm con notas automáticas para anticipos
   - **Exportación a CSV**: Historial completo de ventas exportable
 - **Gestión de Clientes:** Registro y consulta de clientes, con expediente completo incluyendo historial de servicios y cursos.
 - **Gestión de Productos:** Administración completa de servicios y cursos con precios actualizables.
@@ -125,6 +125,15 @@ El sistema está diseñado para ser desplegado fácilmente utilizando Docker y D
 > **💡 Tip para limpiar formularios**: 
 > - **Mac**: Presiona `Cmd + Shift + R` para refrescar y limpiar formularios
 > - **Windows/Linux**: Presiona `Ctrl + Shift + R` para refrescar y limpiar formularios
+
+---
+
+## Historial - Versión 1.5.5
+
+### 🎫 **Mejoras en Tickets de Anticipo**
+- **Notas automáticas**: Los tickets de anticipo incluyen automáticamente notas sobre compromiso de tiempo y política de cancelación
+- **Optimización 58mm**: Tickets optimizados específicamente para impresoras térmicas de 58mm con mejor aprovechamiento del espacio
+- **Formato mejorado**: Capitalización automática de títulos de servicios y mejor espaciado visual
 
 ---
 

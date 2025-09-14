@@ -40,7 +40,8 @@ function templateTicket(mov, settings) {
   }
   
   const montoFormateado = Number(mov.monto).toFixed(2);
-  const tipoServicio = mov.subtipo === 'Retoque' ? `Retoque de ${mov.tipo}` : mov.tipo;
+  const tipoServicio = mov.subtipo === 'Retoque' ? `Retoque de ${mov.tipo}` : 
+    (mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1).toLowerCase());
 
   const lines = [];
   lines.push('<div class="ticket">');
@@ -144,6 +145,16 @@ function templateTicket(mov, settings) {
     }
   }
   
+  // Add special notes for anticipo tickets
+  const isAnticipo = mov.tipo === 'Anticipo' || (mov.concepto && mov.concepto.toLowerCase().includes('anticipo'));
+  if (isAnticipo) {
+    lines.push('<div class="t-spacer"></div>');
+    lines.push('<div class="t-left t-small">Al dejar tu anticipo, te agradecemos tu compromiso con nuestro tiempo, de la misma forma en que nosotros respetamos el tuyo.</div>');
+    lines.push('<div class="t-spacer"></div>');
+    lines.push('<div class="t-left t-small">Las cancelaciones con menos de 24 horas no son reembolsables.</div>');
+    lines.push('<div class="t-spacer"></div>');
+  }
+
   if (mov.notas) lines.push(`<div class="t-left t-small t-service-detail"><b>Notas:</b> ${esc(mov.notas)}</div>`);
   
   lines.push('<div class="t-divider"></div>');
@@ -153,6 +164,9 @@ function templateTicket(mov, settings) {
   
   // MÉTODO DE PAGO DEBAJO DEL TOTAL - ALINEADO A LA IZQUIERDA
   if (mov.metodo) lines.push(`<div class="t-left t-small"><b>Método:</b> ${esc(mov.metodo)}</div>`);
+  
+  // PEQUEÑO ESPACIO ANTES DE TE ATENDIÓ
+  if (mov.staff) lines.push('<div class="t-spacer"></div>');
   
   // TE ATENDIÓ DEBAJO DEL MÉTODO DE PAGO
   if (mov.staff) lines.push(`<div class="t-left t-small"><b>Te atendió:</b> ${esc(mov.staff)}</div>`);
