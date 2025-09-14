@@ -844,12 +844,13 @@ async function loadDashboardData() {
 }
 
 function generateFolio() {
+  const prefix = settings.folioPrefix || 'AP-';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < 5; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return result;
+  return `${prefix}${result}`;
 }
 
 async function addMovement(mov) {
@@ -1188,12 +1189,59 @@ async function handleSaveSettings(e) {
     });
     if (response.ok) {
       alert('Configuración guardada.');
+      
+      // Check if folio prefix changed and needs migration
+      const oldPrefix = window.settings?.folioPrefix;
+      const newPrefix = settings.folioPrefix;
+      
+      if (oldPrefix && newPrefix && oldPrefix !== newPrefix) {
+        const shouldMigrate = confirm(
+          `El prefijo de folio cambió de "${oldPrefix}" a "${newPrefix}".\n\n` +
+          '¿Deseas actualizar todos los folios existentes con el nuevo prefijo?\n\n' +
+          'Esto agregará el prefijo a todos los folios que no lo tengan.'
+        );
+        
+        if (shouldMigrate) {
+          await migrateFolios(settings);
+        }
+      }
     } else {
       throw new Error('Failed to save settings');
     }
   } catch (error) {
     console.error('Error saving settings:', error);
     alert('Error al guardar la configuración');
+  }
+}
+
+// Function to migrate existing folios
+async function migrateFolios(settings) {
+  try {
+    console.log('Starting folio migration...');
+    const response = await fetch('/api/migrate-folios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      if (result.updated > 0) {
+        alert(`✅ Migración completada!\n\n${result.updated} folios actualizados con el nuevo prefijo.`);
+        // Refresh the tickets table if visible
+        if (document.querySelector('.tab-content').style.display !== 'none') {
+          loadMovements();
+        }
+      } else {
+        alert('ℹ️ No hay folios que necesiten migración.');
+      }
+    } else {
+      throw new Error(result.message || 'Migration failed');
+    }
+  } catch (error) {
+    console.error('Error during migration:', error);
+    alert('❌ Error durante la migración de folios: ' + error.message);
   }
 }
 

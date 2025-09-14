@@ -789,6 +789,66 @@ function startServer() {
             });
     });
 
+    // Migration endpoint to update existing folios with prefix
+    apiRouter.post('/migrate-folios', (req, res) => {
+        const settings = req.body.settings;
+        const prefix = settings?.folioPrefix || 'AP-';
+        
+        console.log(`Starting folio migration with prefix: ${prefix}`);
+        
+        // Get all movements that don't already have the prefix
+        db.all(`SELECT id, folio FROM movements WHERE folio NOT LIKE '${prefix}%'`, [], (err, rows) => {
+            if (err) {
+                console.error('Error fetching movements for migration:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            if (rows.length === 0) {
+                console.log('No folios need migration');
+                return res.json({ 
+                    success: true, 
+                    message: 'No folios need migration',
+                    updated: 0 
+                });
+            }
+            
+            let updatedCount = 0;
+            let errorCount = 0;
+            
+            // Update each folio
+            const updatePromises = rows.map(row => {
+                return new Promise((resolve) => {
+                    const newFolio = `${prefix}${row.folio}`;
+                    
+                    db.run(`UPDATE movements SET folio = ? WHERE id = ?`, 
+                        [newFolio, row.id], 
+                        function(updateErr) {
+                            if (updateErr) {
+                                console.error(`Error updating folio ${row.folio}:`, updateErr);
+                                errorCount++;
+                            } else {
+                                console.log(`Updated folio: ${row.folio} → ${newFolio}`);
+                                updatedCount++;
+                            }
+                            resolve();
+                        }
+                    );
+                });
+            });
+            
+            // Wait for all updates to complete
+            Promise.all(updatePromises).then(() => {
+                console.log(`Migration completed: ${updatedCount} updated, ${errorCount} errors`);
+                res.json({ 
+                    success: true, 
+                    message: `Migration completed: ${updatedCount} folios updated, ${errorCount} errors`,
+                    updated: updatedCount,
+                    errors: errorCount
+                });
+            });
+        });
+    });
+
     app.use('/api', apiRouter);
 
     app.listen(port, () => {
