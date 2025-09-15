@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PNG Receipt</title>
+    <link rel="stylesheet" href="receipt.css">
+</head>
+<body style="padding: 20px; background: #f0f0f0;">
+    <h1>Test del Sistema PNG Receipt</h1>
+    <p>Este es un test básico para verificar que todo funcione correctamente.</p>
+
+    <button onclick="testPNGGeneration()" style="padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+        🧪 Recibo Simple
+    </button>
+
+    <button onclick="testPNGGenerationWithDiscount()" style="padding: 10px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        💰 Recibo con Descuento
+    </button>
+
+    <div id="test-output" style="margin-top: 20px; padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #28a745;">
+        <strong>Status:</strong> Listo para probar
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="receipt.js"></script>
+
+    <script>
+        function testPNGGeneration() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = '<strong>Status:</strong> 🔄 Generando recibo simple...';
+
+            try {
+                // Test with demo movement ID
+                window.downloadReceiptPNG('TEST-001');
+
+                setTimeout(() => {
+                    output.innerHTML = '<strong>Status:</strong> ✅ Test completado! Si el archivo se descargó, el sistema funciona correctamente.';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Test error:', error);
+                output.innerHTML = `<strong>Status:</strong> ❌ Error en el test: ${error.message}`;
+            }
+        }
+
+        function testPNGGenerationWithDiscount() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = '<strong>Status:</strong> 🔄 Generando recibo con descuento...';
+
+            try {
+                // Test with movement that has discount (TEST-004)
+                window.downloadReceiptPNG('TEST-004');
+
+                setTimeout(() => {
+                    output.innerHTML = '<strong>Status:</strong> ✅ Test con descuento completado! Revisa la consola (F12) para ver los logs de debug.';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Test error:', error);
+                output.innerHTML = `<strong>Status:</strong> ❌ Error en el test: ${error.message}`;
+            }
+        }
+
+        // Verificar que todo esté cargado
+        window.addEventListener('load', () => {
+            const output = document.getElementById('test-output');
+
+            if (typeof html2canvas !== 'undefined' &&
+                typeof saveAs !== 'undefined' &&
+                typeof window.pngReceiptGenerator !== 'undefined') {
+                output.innerHTML = '<strong>Status:</strong> ✅ Todas las librerías cargadas correctamente. Listo para probar.';
+            } else {
+                output.innerHTML = '<strong>Status:</strong> ❌ Error: Algunas librerías no se cargaron correctamente.';
+            }
+        });
+    </script>
+</body>
+</html>

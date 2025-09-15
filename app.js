@@ -1025,23 +1025,35 @@ function renderTable() {
     tr.insertCell().textContent = Number(mov.monto).toFixed(2);
 
     const actionsCell = tr.insertCell();
-    
+
+    // Botón de descarga PNG
+    const pngButton = document.createElement('button');
+    pngButton.className = 'action-btn btn-success';
+    pngButton.dataset.id = mov.id;
+    pngButton.dataset.action = 'download-png';
+    pngButton.innerHTML = '<span class="material-symbols-outlined">payment</span>';
+    pngButton.title = 'Descargar recibo PNG para compartir';
+    pngButton.style.marginRight = '5px';
+    actionsCell.appendChild(pngButton);
+
     // Botón de solicitar cancelación para todos los usuarios
     const cancelRequestButton = document.createElement('button');
     cancelRequestButton.className = 'action-btn btn-warning';
     cancelRequestButton.dataset.id = mov.id;
     cancelRequestButton.dataset.action = 'request-cancel';
-    cancelRequestButton.textContent = 'Solicitar Cancelación';
+    cancelRequestButton.innerHTML = '<span class="material-symbols-outlined">cancel</span>';
+    cancelRequestButton.title = 'Solicitar Cancelación';
     cancelRequestButton.style.marginRight = '5px';
     actionsCell.appendChild(cancelRequestButton);
-    
+
     // Solo mostrar botón de eliminar para administradores
     if (currentUser && currentUser.role === 'admin') {
       const deleteButton = document.createElement('button');
       deleteButton.className = 'action-btn btn-danger';
       deleteButton.dataset.id = mov.id;
       deleteButton.dataset.action = 'delete';
-      deleteButton.textContent = 'Eliminar';
+      deleteButton.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+      deleteButton.title = 'Eliminar permanentemente';
       actionsCell.appendChild(deleteButton);
     }
   });
@@ -1837,7 +1849,7 @@ function handleTableClick(e) {
     const id = actionBtn.dataset.id;
     const action = actionBtn.dataset.action;
 
-    if (action === 'reprint' || action === 'delete' || action === 'request-cancel') {
+    if (action === 'reprint' || action === 'delete' || action === 'request-cancel' || action === 'download-png') {
       const movement = movements.find(m => m.id === id);
       if (movement) {
         if (action === 'reprint') {
@@ -1847,6 +1859,8 @@ function handleTableClick(e) {
           deleteMovement(id);
         } else if (action === 'request-cancel') {
           showCancellationRequestModal(id, movement);
+        } else if (action === 'download-png') {
+          downloadPNGReceipt(id, movement);
         }
       }
     } else if (action === 'edit-user') {
@@ -3255,6 +3269,44 @@ function setCorrectClearShortcut() {
         }
     }
 }
+
+// --- PNG AND PDF DOWNLOAD FUNCTIONS ---
+function downloadPNGReceipt(movementId, movement) {
+  try {
+    console.log('Downloading PNG receipt for movement:', movementId);
+    console.log('Movement data:', movement);
+
+    // Prepare movement data with client info
+    const client = clients.find(c => c.id === movement.clienteId);
+    console.log('Found client:', client);
+
+    const movementWithClient = {
+      ...movement,
+      client: client || null,
+      cliente: client ? client.nombre : 'Cliente General',
+      telefonoCliente: client ? client.telefono : null
+    };
+
+    console.log('Movement with client:', movementWithClient);
+
+    // Check if required libraries are loaded
+    console.log('html2canvas available:', typeof html2canvas !== 'undefined');
+    console.log('saveAs available:', typeof saveAs !== 'undefined');
+    console.log('pngReceiptGenerator available:', typeof window.pngReceiptGenerator !== 'undefined');
+
+    // Use the PNG receipt generator
+    if (typeof window.pngReceiptGenerator !== 'undefined' && window.pngReceiptGenerator) {
+      console.log('Calling pngReceiptGenerator.downloadReceiptPNG...');
+      window.pngReceiptGenerator.downloadReceiptPNG(movementId, movementWithClient);
+    } else {
+      throw new Error('Sistema PNG no disponible - Verificar que receipt.js esté cargado');
+    }
+  } catch (error) {
+    console.error('Error downloading PNG receipt:', error);
+    alert('Error al generar el recibo PNG: ' + error.message);
+  }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();

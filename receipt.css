@@ -1,0 +1,315 @@
+/**
+ * PNG Receipt Styles - Based on broad_idea.png design
+ * Mobile-optimized receipt design using Montserrat font
+ * Matches the elegant layout shown in the reference image
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+/* Base receipt container */
+.receipt-wrapper {
+  width: 400px;
+  font-family: 'Montserrat', sans-serif;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Background decorative layer */
+.receipt-background {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 20px;
+  min-height: 600px;
+}
+
+/* Main receipt container */
+.receipt-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Header section with logo and branding */
+.receipt-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.logo-img {
+  max-width: 80px;
+  height: auto;
+}
+
+.business-name-img {
+  max-width: 200px;
+  height: auto;
+}
+
+.tagline-img {
+  max-width: 150px;
+  height: auto;
+}
+
+/* Content section over white rectangle */
+.receipt-content {
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 30px 25px;
+  width: 100%;
+  max-width: 350px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title-img {
+  max-width: 250px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+/* Dynamic content with Montserrat */
+.dynamic-content {
+  width: 100%;
+  color: #333;
+  line-height: 1.5;
+}
+
+/* Typography classes */
+.montserrat { 
+  font-family: 'Montserrat', sans-serif; 
+}
+
+.regular { 
+  font-weight: 400; 
+}
+
+.bold { 
+  font-weight: 600; 
+}
+
+.extra-bold { 
+  font-weight: 700; 
+}
+
+/* Content sections */
+.folio-section,
+.date-section,
+.client-section {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.services-section {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.services-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.services-table th,
+.services-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  font-size: 13px;
+}
+
+.services-table th {
+  font-weight: 600;
+  background-color: rgba(0,0,0,0.05);
+}
+
+.services-table .amount {
+  text-align: right;
+  font-weight: 600;
+}
+
+/* Appointment section */
+.appointment-section {
+  background-color: rgba(0,0,0,0.03);
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.appointment-section .date {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.appointment-section .time {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Medical consent section */
+.medical-section {
+  background-color: rgba(255, 240, 240, 0.5);
+  padding: 15px;
+  border-left: 4px solid #ff6b6b;
+  margin: 15px 0;
+  border-radius: 3px;
+}
+
+.medical-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #d63384;
+}
+
+.medical-section p {
+  margin: 5px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.medical-data {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(214, 51, 132, 0.2);
+}
+
+.medical-data p {
+  margin: 3px 0;
+  font-size: 11px;
+}
+
+/* Anticipo notes section */
+.anticipo-notes {
+  background-color: rgba(255, 248, 220, 0.8);
+  padding: 12px;
+  border-left: 4px solid #ffc107;
+  margin: 15px 0;
+  border-radius: 3px;
+}
+
+.anticipo-notes p {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.anticipo-notes .highlight {
+  font-weight: 600;
+  color: #b8860b;
+}
+
+/* Payment summary section */
+.payment-summary {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 2px solid #333;
+  width: 100%;
+}
+
+.total-amount {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.payment-method,
+.staff-info {
+  text-align: center;
+  font-size: 13px;
+  margin: 5px 0;
+}
+
+.payment-method .method,
+.staff-info .name {
+  font-weight: 600;
+}
+
+/* Footer section */
+.receipt-footer {
+  margin-top: 20px;
+  text-align: center;
+  padding: 15px;
+}
+
+.contact-info {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 10px 0;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.contact-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.footer-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+/* Utility classes */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-small { margin-bottom: 5px; }
+.mb-medium { margin-bottom: 10px; }
+.mb-large { margin-bottom: 15px; }
+
+.mt-small { margin-top: 5px; }
+.mt-medium { margin-top: 10px; }
+.mt-large { margin-top: 15px; }
+
+/* Responsive adjustments */
+@media (max-width: 420px) {
+  .receipt-wrapper {
+    width: 100%;
+    max-width: 380px;
+  }
+  
+  .receipt-content {
+    padding: 20px 15px;
+  }
+  
+  .services-table th,
+  .services-table td {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+}
+
+/* Print/PNG specific styles */
+@media print, .png-export {
+  .receipt-wrapper {
+    box-shadow: none;
+    border: none;
+  }
+  
+  /* Ensure high quality for PNG export */
+  * {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}

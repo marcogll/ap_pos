@@ -151,7 +151,7 @@ function templateTicket(mov, settings) {
     lines.push('<div class="t-spacer"></div>');
     lines.push('<div class="t-left t-small">Al dejar tu anticipo, te agradecemos tu compromiso con nuestro tiempo, de la misma forma en que nosotros respetamos el tuyo.</div>');
     lines.push('<div class="t-spacer"></div>');
-    lines.push('<div class="t-left t-small">Las cancelaciones con menos de 24 horas no son reembolsables.</div>');
+    lines.push('<div class="t-left t-small">Las cancelaciones con menos de 48 horas no son reembolsables.</div>');
     lines.push('<div class="t-spacer"></div>');
   }
 
@@ -205,7 +205,7 @@ function templateTicket(mov, settings) {
  * @param {object} mov El objeto del movimiento.
  * @param {object} settings El objeto de configuración.
  */
-export async function renderTicketAndPrint(mov, settings) {
+export async function renderTicketAndPrint(mov, settings, options = {}) {
   const printArea = document.getElementById('printArea');
   if (!printArea) {
     console.error("El área de impresión #printArea no se encontró.");
@@ -219,14 +219,23 @@ export async function renderTicketAndPrint(mov, settings) {
     const canvas = document.getElementById('qr-canvas');
     if (!canvas) {
       console.error("El canvas del QR #qr-canvas no se encontró. Se imprimirá sin QR.");
-      window.print();
+      if (options.saveAsPDF) {
+        await generatePDF(mov);
+      } else {
+        window.print();
+      }
       return;
     }
 
     const qrUrl = 'http://vanityexperience.mx/qr';
     await QRCode.toCanvas(canvas, qrUrl, { width: 140, margin: 1 });
 
-    requestAnimationFrame(() => window.print());
+    if (options.saveAsPDF) {
+      // Generate PDF without printing
+      await generatePDF(mov);
+    } else {
+      requestAnimationFrame(() => window.print());
+    }
 
   } catch (error) {
     console.error("Error al intentar imprimir:", error);
@@ -261,5 +270,79 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// PDF Generation function
+async function generatePDF(mov) {
+  try {
+    console.log('Generating PDF for movement:', mov.folio);
+
+    // Get the print area that contains the rendered ticket
+    const printArea = document.getElementById('printArea');
+    if (!printArea) {
+      throw new Error('Print area not found');
+    }
+
+    // Create a temporary container for PDF generation
+    const tempContainer = document.createElement('div');
+    tempContainer.innerHTML = printArea.innerHTML;
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '-9999px';
+    tempContainer.style.width = '58mm';
+    tempContainer.style.background = 'white';
+    document.body.appendChild(tempContainer);
+
+    // Use html2canvas to convert to image, then create PDF
+    const canvas = await html2canvas(tempContainer, {
+      scale: 2,
+      width: 220, // ~58mm in pixels
+      height: 'auto',
+      backgroundColor: 'white',
+      useCORS: true,
+      allowTaint: true
+    });
+
+    console.log('PDF Canvas created, dimensions:', canvas.width, 'x', canvas.height);
+
+    // Clean up temporary container
+    document.body.removeChild(tempContainer);
+
+    // Validate canvas before creating blob
+    if (canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Canvas has invalid dimensions: ' + canvas.width + 'x' + canvas.height);
+    }
+
+    // Convert canvas to blob and download
+    canvas.toBlob(blob => {
+      if (!blob) {
+        console.error('Failed to create blob from canvas');
+        alert('Error al generar el PDF del ticket - blob creation failed');
+        return;
+      }
+
+      console.log('Blob created successfully:', blob.size, 'bytes');
+
+      try {
+        // Create a link and trigger download
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Ticket_${mov.folio}_thermal.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        console.log('PDF (PNG) ticket downloaded successfully');
+      } catch (urlError) {
+        console.error('Error creating object URL:', urlError);
+        alert('Error al generar el enlace de descarga: ' + urlError.message);
+      }
+    }, 'image/png');
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Error al generar el PDF del ticket: ' + error.message);
+  }
+}
 
 // FORZAR RECARGA - 2025-09-09T21:33:00 - TODO ALINEADO A LA IZQUIERDA

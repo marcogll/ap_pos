@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Completo PNG Receipt - Todos los Casos</title>
+    <link rel="stylesheet" href="receipt.css">
+    <style>
+        body {
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .test-card p {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .test-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        .status-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+        .status-error {
+            border-left-color: #dc3545;
+        }
+        .status-warning {
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Completo del Sistema PNG Receipt</h1>
+    <p>Prueba todos los casos de uso del negocio con datos reales.</p>
+
+    <div id="status-panel" class="status-panel">
+        <strong>Status:</strong> <span id="status-text">Inicializando...</span>
+    </div>
+
+    <div class="test-grid">
+        <div class="test-card">
+            <h3>🔸 Servicio Simple</h3>
+            <p><strong>Cliente:</strong> Ana García</p>
+            <p><strong>Servicio:</strong> Pestañas Volumen Ruso</p>
+            <p><strong>Monto:</strong> $1,200.00</p>
+            <p>Caso básico sin cita ni características especiales.</p>
+            <button class="test-btn" onclick="testCase('TEST-001')">Generar Recibo</button>
+        </div>
+
+        <div class="test-card">
+            <h3>📅 Servicio con Cita</h3>
+            <p><strong>Cliente:</strong> María López</p>
+            <p><strong>Servicio:</strong> Microblading Completo</p>
+            <p><strong>Cita:</strong> 20 Sep 2025, 10:00</p>
+            <p>Servicio con información de cita programada.</p>
+            <button class="test-btn" onclick="testCase('TEST-002')">Generar Recibo</button>
+        </div>
+
+        <div class="test-card">
+            <h3>💰 Anticipo Puro</h3>
+            <p><strong>Cliente:</strong> Carmen Ruiz</p>
+            <p><strong>Concepto:</strong> Anticipo - Pestañas</p>
+            <p><strong>Monto:</strong> $500.00</p>
+            <p>Anticipo que se aplicará en servicio futuro. Incluye notas importantes.</p>
+            <button class="test-btn" onclick="testCase('TEST-003')">Generar Recibo</button>
+        </div>
+
+        <div class="test-card">
+            <h3>🏷️ Servicio + Anticipo Aplicado</h3>
+            <p><strong>Cliente:</strong> Laura Pérez</p>
+            <p><strong>Servicio:</strong> Pestañas Mega Volumen</p>
+            <p><strong>Descuento:</strong> -$500.00 (Anticipo)</p>
+            <p>Servicio con anticipo previamente dado aplicado como descuento.</p>
+            <button class="test-btn" onclick="testCase('TEST-004')">Generar Recibo</button>
+        </div>
+
+        <div class="test-card">
+            <h3>🎗️ Paciente Oncológico</h3>
+            <p><strong>Cliente:</strong> Elena Martínez</p>
+            <p><strong>Servicio:</strong> Microblading Oncológico</p>
+            <p><strong>Médico:</strong> Dr. Carlos Hernández</p>
+            <p>Programa Vanity Warriors - Incluye información médica completa.</p>
+            <button class="test-btn" onclick="testCase('TEST-005')">Generar Recibo</button>
+        </div>
+
+        <div class="test-card">
+            <h3>🎓 Curso/Capacitación</h3>
+            <p><strong>Cliente:</strong> Sofia Vargas</p>
+            <p><strong>Curso:</strong> Curso Básico de Pestañas</p>
+            <p><strong>Monto:</strong> $3,500.00</p>
+            <p>Inscripción a programa educativo con términos especiales.</p>
+            <button class="test-btn" onclick="testCase('TEST-006')">Generar Recibo</button>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px;">
+        <h3>📋 Matriz de Testing</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">Caso</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Anticipo</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Cita</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Médico</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Servicio Simple</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-001">⏳</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Servicio + Cita</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-002">⏳</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Anticipo Puro</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-003">⏳</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Servicio + Anticipo</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅ (Aplicado)</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-004">⏳</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Paciente Oncológico</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">✅</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-005">⏳</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">Curso</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">❌</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;" id="status-006">⏳</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="receipt.js"></script>
+
+    <script>
+        let testsRun = 0;
+        let testsTotal = 6;
+
+        function updateStatus(message, type = 'success') {
+            const statusPanel = document.getElementById('status-panel');
+            const statusText = document.getElementById('status-text');
+
+            statusText.textContent = message;
+            statusPanel.className = 'status-panel';
+
+            if (type === 'error') {
+                statusPanel.classList.add('status-error');
+            } else if (type === 'warning') {
+                statusPanel.classList.add('status-warning');
+            }
+        }
+
+        function updateTestStatus(testNumber, status) {
+            const statusCell = document.getElementById(`status-${testNumber.padStart(3, '0')}`);
+            if (statusCell) {
+                statusCell.textContent = status;
+            }
+        }
+
+        async function testCase(testId) {
+            const testNumber = testId.split('-')[1];
+            updateTestStatus(testNumber, '🔄');
+            updateStatus(`Generando recibo ${testId}...`, 'warning');
+
+            try {
+                await window.downloadReceiptPNG(testId);
+                updateTestStatus(testNumber, '✅');
+                testsRun++;
+                updateStatus(`✅ Recibo ${testId} generado exitosamente! (${testsRun}/${testsTotal} completados)`);
+            } catch (error) {
+                console.error(`Error testing ${testId}:`, error);
+                updateTestStatus(testNumber, '❌');
+                updateStatus(`❌ Error generando recibo ${testId}: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            updateStatus('🚀 Ejecutando todos los tests...', 'warning');
+
+            for (let i = 1; i <= testsTotal; i++) {
+                const testId = `TEST-${i.toString().padStart(3, '0')}`;
+                await testCase(testId);
+                // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            updateStatus(`🎉 Todos los tests completados! ${testsRun}/${testsTotal} exitosos`);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            if (typeof html2canvas !== 'undefined' &&
+                typeof saveAs !== 'undefined' &&
+                typeof window.pngReceiptGenerator !== 'undefined') {
+                updateStatus('✅ Sistema listo para testing. Selecciona un caso o ejecuta todos.');
+
+                // Add run all tests button
+                const button = document.createElement('button');
+                button.textContent = '🚀 Ejecutar Todos los Tests';
+                button.style.cssText = 'width: 100%; padding: 15px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 15px;';
+                button.onclick = runAllTests;
+                document.querySelector('.status-panel').appendChild(button);
+
+            } else {
+                updateStatus('❌ Error: Librerías no cargadas correctamente', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

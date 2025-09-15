@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PNG/PDF Buttons</title>
+    <link rel="stylesheet" href="receipt.css">
+    <style>
+        body { padding: 20px; font-family: Arial, sans-serif; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .test-btn { padding: 10px 20px; margin: 10px; font-size: 14px; cursor: pointer; border: none; border-radius: 5px; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .log { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test PNG/PDF Download Buttons</h1>
+
+    <div class="test-section">
+        <h3>PNG Receipt Test</h3>
+        <button class="test-btn btn-success" onclick="testPNGDownload()">📱 Test PNG Download</button>
+        <div id="png-log" class="log">Ready to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>PDF Thermal Ticket Test</h3>
+        <button class="test-btn btn-info" onclick="testPDFDownload()">🖨️ Test PDF Download</button>
+        <div id="pdf-log" class="log">Ready to test...</div>
+    </div>
+
+    <!-- Mock print area for PDF test -->
+    <div id="printArea" style="display: none;"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
+    <script src="receipt.js"></script>
+
+    <script>
+        // Mock data
+        const testMovement = {
+            id: 'TEST-001',
+            folio: 'AP-test123',
+            fecha: '2025-09-14',
+            cliente: 'Cliente Test',
+            telefono: '+52 614 123 4567',
+            concepto: 'Pestañas Volumen Ruso - Test',
+            monto: '1500.00',
+            metodo: 'Efectivo',
+            staff: 'Ale Ponce',
+            tipo: 'service',
+            client: {
+                nombre: 'Cliente Test',
+                telefono: '+52 614 123 4567'
+            }
+        };
+
+        function log(elementId, message) {
+            const logElement = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function testPNGDownload() {
+            log('png-log', '🚀 Starting PNG test...');
+
+            try {
+                // Check if PNG generator is available
+                if (typeof window.pngReceiptGenerator === 'undefined') {
+                    log('png-log', '❌ ERROR: pngReceiptGenerator not found');
+                    return;
+                }
+
+                log('png-log', '✅ PNG Generator found');
+                log('png-log', '📦 Testing with mock movement data...');
+
+                // Test the PNG download
+                window.pngReceiptGenerator.downloadReceiptPNG('TEST-001', testMovement);
+
+                log('png-log', '✅ PNG download initiated');
+
+            } catch (error) {
+                log('png-log', '❌ ERROR: ' + error.message);
+                console.error('PNG Test Error:', error);
+            }
+        }
+
+        function testPDFDownload() {
+            log('pdf-log', '🚀 Starting PDF test...');
+
+            try {
+                // Create a mock thermal ticket in print area
+                const printArea = document.getElementById('printArea');
+                printArea.innerHTML = \`
+                    <div class="ticket">
+                        <div class="t-center t-bold t-business-name">ALEJANDRA PONCE</div>
+                        <div class="t-center t-small t-tagline">Beauty Expert</div>
+                        <div class="t-divider"></div>
+                        <div class="t-row">
+                            <span class="t-row-label">Folio:</span>
+                            <span>${testMovement.folio}</span>
+                        </div>
+                        <div class="t-row">
+                            <span class="t-row-label">Fecha:</span>
+                            <span>${testMovement.fecha}</span>
+                        </div>
+                        <div class="t-row">
+                            <span class="t-row-label">Cliente:</span>
+                            <span>${testMovement.cliente}</span>
+                        </div>
+                        <div class="t-divider"></div>
+                        <div class="t-service-detail">
+                            <div class="t-service-detail-label">Servicio:</div>
+                            <div>${testMovement.concepto}</div>
+                        </div>
+                        <div class="t-divider"></div>
+                        <div class="t-row t-total-large t-bold">
+                            <span>TOTAL:</span>
+                            <span>$${testMovement.monto}</span>
+                        </div>
+                        <div class="t-row">
+                            <span>Método:</span>
+                            <span>${testMovement.metodo}</span>
+                        </div>
+                        <div class="t-footer t-center t-small">
+                            Gracias por tu preferencia
+                        </div>
+                        <canvas id="qr-canvas" width="140" height="140"></canvas>
+                    </div>
+                \`;
+
+                log('pdf-log', '✅ Mock ticket created in print area');
+                log('pdf-log', '📦 Testing PDF generation...');
+
+                // Test PDF generation directly
+                generateTestPDF();
+
+            } catch (error) {
+                log('pdf-log', '❌ ERROR: ' + error.message);
+                console.error('PDF Test Error:', error);
+            }
+        }
+
+        async function generateTestPDF() {
+            try {
+                const printArea = document.getElementById('printArea');
+                if (!printArea) {
+                    throw new Error('Print area not found');
+                }
+
+                log('pdf-log', '🎨 Creating temporary container...');
+
+                const tempContainer = document.createElement('div');
+                tempContainer.innerHTML = printArea.innerHTML;
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.width = '58mm';
+                tempContainer.style.background = 'white';
+                document.body.appendChild(tempContainer);
+
+                log('pdf-log', '📐 Converting to canvas...');
+
+                const canvas = await html2canvas(tempContainer, {
+                    scale: 2,
+                    width: 220,
+                    height: 'auto',
+                    backgroundColor: 'white',
+                    useCORS: true,
+                    allowTaint: true
+                });
+
+                document.body.removeChild(tempContainer);
+
+                log('pdf-log', '✅ Canvas created: ' + canvas.width + 'x' + canvas.height);
+                log('pdf-log', '💾 Downloading file...');
+
+                canvas.toBlob(blob => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = \`Ticket_\${testMovement.folio}_thermal.png\`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+
+                    log('pdf-log', '🎉 PDF test completed successfully!');
+                });
+
+            } catch (error) {
+                log('pdf-log', '❌ PDF Generation Error: ' + error.message);
+                console.error('PDF Generation Error:', error);
+            }
+        }
+
+        // Check on load
+        window.addEventListener('load', () => {
+            log('png-log', '🔍 Checking PNG dependencies...');
+            log('png-log', 'html2canvas: ' + (typeof html2canvas !== 'undefined' ? '✅' : '❌'));
+            log('png-log', 'saveAs: ' + (typeof saveAs !== 'undefined' ? '✅' : '❌'));
+            log('png-log', 'pngReceiptGenerator: ' + (typeof window.pngReceiptGenerator !== 'undefined' ? '✅' : '❌'));
+
+            log('pdf-log', '🔍 Checking PDF dependencies...');
+            log('pdf-log', 'html2canvas: ' + (typeof html2canvas !== 'undefined' ? '✅' : '❌'));
+            log('pdf-log', 'QRCode: ' + (typeof QRCode !== 'undefined' ? '✅' : '❌'));
+        });
+    </script>
+</body>
+</html>
