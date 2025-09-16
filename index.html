@@ -115,62 +115,43 @@
               </div>
             </div>
 
-            <!-- Categorías de Productos -->
-            <div class="categories-container">
-              <h3>Selecciona tus servicios</h3>
-              
-              <!-- Vanity Lashes -->
-              <div class="category-section" data-category="Vanity Lashes">
-                <div class="category-header">
-                  <span class="category-icon">👁️</span>
-                  <h4>Vanity Lashes</h4>
-                  <button class="category-toggle">▶</button>
+            <!-- Barra de Búsqueda de Servicios -->
+            <div class="services-search-container">
+              <h3>Buscar servicios y productos</h3>
+
+              <!-- Barra de búsqueda principal -->
+              <div class="search-bar-container">
+                <div class="search-input-wrapper">
+                  <input type="text" id="service-search-input" placeholder="Buscar servicios, productos o escribir 'anticipo'..." autocomplete="off" />
+                  <span class="search-icon">🔍</span>
                 </div>
-                <div class="products-grid" id="pestanas-products">
-                  <!-- Los productos se cargarán dinámicamente aquí -->
+
+                <!-- Resultados de búsqueda -->
+                <div id="search-results" class="search-results" style="display: none;">
+                  <!-- Los resultados aparecerán aquí -->
                 </div>
               </div>
 
-              <!-- PMU Services -->
-              <div class="category-section" data-category="PMU Services">
-                <div class="category-header">
-                  <span class="category-icon">✏️</span>
-                  <h4>PMU Services</h4>
-                  <button class="category-toggle">▶</button>
-                </div>
-                <div class="products-grid" id="microblading-products">
-                  <!-- Los productos se cargarán dinámicamente aquí -->
-                </div>
-              </div>
-
-              <!-- Uñas -->
-              <div class="category-section" data-category="Uñas">
-                <div class="category-header">
-                  <span class="category-icon">💅</span>
-                  <h4>Nail Art</h4>
-                  <button class="category-toggle">▶</button>
-                </div>
-                <div class="products-grid" id="unas-products">
-                  <!-- Los productos se cargarán dinámicamente aquí -->
-                </div>
-              </div>
-
-              <!-- Anticipos -->
-              <div class="category-section" data-category="Anticipos">
-                <div class="category-header">
-                  <span class="category-icon">💰</span>
-                  <h4>Anticipos</h4>
-                  <button class="category-toggle">▶</button>
-                </div>
-                <div class="anticipos-grid" id="anticipos-products">
+              <!-- Sección de Anticipos -->
+              <div id="anticipo-section" class="anticipo-section" style="display: none;">
+                <div class="anticipo-form-card">
+                  <div class="anticipo-header">
+                    <span class="category-icon">💰</span>
+                    <h4>Agregar Anticipo</h4>
+                  </div>
                   <div class="anticipo-form">
                     <div class="anticipo-input-group">
                       <input type="number" id="anticipo-amount" min="1" placeholder="Cantidad" />
                       <input type="text" id="anticipo-comment" placeholder="Comentario (opcional)" />
-                      <button class="btn-add-anticipo" onclick="addAnticipo()">Agregar</button>
+                      <button class="btn-add-anticipo" onclick="addAnticipo()">Agregar Anticipo</button>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Mensaje de ayuda -->
+              <div class="search-help">
+                <p>💡 Escribe el nombre del servicio o producto, o escribe "anticipo" para agregar un anticipo</p>
               </div>
             </div>
           </div>

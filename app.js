@@ -2360,9 +2360,9 @@ function initializeModernSalesInterface() {
         header.addEventListener('click', toggleCategory);
     });
 
-    // Load products by categories
-    loadProductsByCategories();
-    
+    // Initialize search functionality
+    initializeProductSearch();
+
     // Update cart display
     updateCartDisplay();
 }
@@ -2394,6 +2394,224 @@ function collapseAllCategories() {
             section.classList.add('collapsed');
         }
     });
+}
+
+// Initialize product search functionality
+async function initializeProductSearch() {
+    try {
+        // Load all products
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to load products');
+
+        const allProducts = await response.json();
+        products = allProducts;
+        console.log('Products loaded for search:', products.length);
+
+        // Setup search event listeners
+        setupSearchEventListeners();
+
+    } catch (error) {
+        console.error('Error loading products for search:', error);
+    }
+}
+
+function setupSearchEventListeners() {
+    const searchInput = document.getElementById('service-search-input');
+    const searchResults = document.getElementById('search-results');
+    const anticipoSection = document.getElementById('anticipo-section');
+
+    if (!searchInput || !searchResults || !anticipoSection) return;
+
+    let searchTimeout;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim().toLowerCase();
+
+        if (query.length === 0) {
+            searchResults.style.display = 'none';
+            anticipoSection.style.display = 'none';
+            return;
+        }
+
+        // Always hide anticipo section when typing, it will show via search results or click
+        anticipoSection.style.display = 'none';
+
+        // Debounce search
+        searchTimeout = setTimeout(() => {
+            performProductSearch(query);
+        }, 200);
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // Focus search input for easy access
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim() && !this.value.toLowerCase().includes('anticipo')) {
+            performProductSearch(this.value.trim().toLowerCase());
+        }
+    });
+}
+
+function performProductSearch(query) {
+    const searchResults = document.getElementById('search-results');
+    if (!searchResults) return;
+
+    // Filter products based on query
+    let filteredProducts = products.filter(product =>
+        product.name.toLowerCase().includes(query) ||
+        (product.category && product.category.toLowerCase().includes(query))
+    );
+
+    // Add virtual "anticipo" product if searching for it
+    if (query.includes('anticipo') || query.includes('advance')) {
+        const anticipoProduct = {
+            id: 'virtual_anticipo',
+            name: 'Anticipo',
+            category: 'Anticipos',
+            price: 0,
+            custom_price: true,
+            virtual: true
+        };
+        filteredProducts.unshift(anticipoProduct); // Add at the beginning
+    }
+
+    // Render search results
+    renderSearchResults(filteredProducts);
+    searchResults.style.display = 'block';
+}
+
+function renderSearchResults(filteredProducts) {
+    const searchResults = document.getElementById('search-results');
+    if (!searchResults) return;
+
+    searchResults.innerHTML = '';
+
+    if (filteredProducts.length === 0) {
+        searchResults.innerHTML = '<div class="search-empty">No se encontraron servicios o productos</div>';
+        return;
+    }
+
+    filteredProducts.forEach(product => {
+        const resultItem = createSearchResultItem(product);
+        searchResults.appendChild(resultItem);
+    });
+}
+
+function createSearchResultItem(product) {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.dataset.productId = product.id;
+
+    const priceDisplay = product.custom_price
+        ? '<div class="search-result-custom-price">Precio personalizado</div>'
+        : `<div class="search-result-price">$${parseFloat(product.price || 0).toFixed(2)}</div>`;
+
+    item.innerHTML = `
+        <div class="search-result-info">
+            <div class="search-result-name">${escapeHTML(product.name)}</div>
+            <div class="search-result-category">${escapeHTML(product.category || 'Sin categoría')}</div>
+        </div>
+        <div class="search-result-actions">
+            ${priceDisplay}
+        </div>
+    `;
+
+    // Add click event to add product to cart
+    item.addEventListener('click', function() {
+        addProductToCartFromSearch(product.id);
+        // Clear search and hide results
+        const searchInput = document.getElementById('service-search-input');
+        const searchResults = document.getElementById('search-results');
+        if (searchInput) searchInput.value = '';
+        if (searchResults) searchResults.style.display = 'none';
+    });
+
+    return item;
+}
+
+function addProductToCartFromSearch(productId) {
+    // Handle virtual anticipo product
+    if (productId === 'virtual_anticipo') {
+        // Show anticipo section instead of adding directly
+        const anticipoSection = document.getElementById('anticipo-section');
+        const searchResults = document.getElementById('search-results');
+        if (anticipoSection) anticipoSection.style.display = 'block';
+        if (searchResults) searchResults.style.display = 'none';
+
+        // Focus on the amount input
+        const amountInput = document.getElementById('anticipo-amount');
+        if (amountInput) {
+            setTimeout(() => amountInput.focus(), 100);
+        }
+        return;
+    }
+
+    // Find the product in the products array
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    // Handle custom price products
+    let price = product.price;
+    if (product.custom_price) {
+        const customPrice = prompt(`Ingresa el precio para "${product.name}":`, '0');
+        if (customPrice === null) return; // User cancelled
+        price = parseFloat(customPrice) || 0;
+    }
+
+    // Check if product is already in cart
+    const existingIndex = selectedProducts.findIndex(p => p.id === productId);
+
+    if (existingIndex >= 0) {
+        // Update quantity
+        selectedProducts[existingIndex].quantity += 1;
+        selectedProducts[existingIndex].price = price; // Update price in case it changed
+    } else {
+        // Add new product
+        selectedProducts.push({
+            id: product.id,
+            name: product.name,
+            price: price,
+            quantity: 1,
+            type: product.type,
+            custom_price: product.custom_price
+        });
+    }
+
+    updateCartDisplay();
+    calculateTotals();
+
+    // Show visual feedback
+    showAddToCartFeedback(product.name);
+}
+
+function showAddToCartFeedback(productName) {
+    // Create temporary notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-weight: bold;
+        animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = `✓ ${productName} agregado al carrito`;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 2000);
 }
 
 async function loadProductsByCategories() {
@@ -3247,13 +3465,19 @@ function addAnticipo() {
     // Clear inputs
     amountInput.value = '';
     commentInput.value = '';
-    
+
+    // Hide anticipo section and clear search
+    const anticipoSection = document.getElementById('anticipo-section');
+    const searchInput = document.getElementById('service-search-input');
+    if (anticipoSection) anticipoSection.style.display = 'none';
+    if (searchInput) searchInput.value = '';
+
     // Update cart display
     updateCartDisplay();
     calculateTotals();
-    
-    // Show confirmation
-    alert(`✅ ANTICIPO AGREGADO\n\n${anticipoName}: $${amount.toFixed(2)}`);
+
+    // Show visual feedback instead of alert
+    showAddToCartFeedback(`${anticipoName}: $${amount.toFixed(2)}`);
 }
 
 
