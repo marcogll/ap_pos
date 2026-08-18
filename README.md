@@ -1,4 +1,38 @@
-# Sistema de Punto de Venta de Master · Ale Ponce
+<p align="center">
+  <a href="https://soul23.mx">
+    <picture>
+      <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/marcogll/mg_data_storage/refs/heads/main/soul23/logo/soul23_logo_wh.png">
+      <source
+        media="(prefers-color-scheme: light)"
+        srcset="https://raw.githubusercontent.com/marcogll/mg_data_storage/refs/heads/main/soul23/logo/soul23_logo_blk.png">
+      <img
+        src="https://raw.githubusercontent.com/marcogll/mg_data_storage/refs/heads/main/soul23/logo/soul23_logo_blk.png"
+        width="110"
+        alt="Soul:23">
+    </picture>
+  </a>
+</p>
+
+<h1 align="center">Master POS — Ale Ponce</h1>
+
+<p align="center">
+  Sistema de punto de venta para servicios de belleza: clientes, ventas, productos y citas.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/JavaScript-3a3a3a?style=flat-square&logo=javascript&logoColor=white">
+  <img src="https://img.shields.io/badge/HTML5-3a3a3a?style=flat-square&logo=html5&logoColor=white">
+  <img src="https://img.shields.io/badge/CSS3-3a3a3a?style=flat-square&logo=css3&logoColor=white">
+</p>
+
+---
+
+## Description
+
+Sistema de Punto de Venta (POS) simple y eficiente para gestionar las operaciones de un negocio de belleza: administración centralizada de clientes, ventas, productos y citas, con dashboard de estadísticas clave (ingresos totales, número de servicios, gráficos de rendimiento) y gestión de ventas avanzada.
+
 
 Este es un sistema de Punto de Venta (POS) simple y eficiente, diseñado para gestionar las operaciones de un negocio de belleza. La aplicación permite administrar clientes, ventas, productos, y citas de forma centralizada.
 
